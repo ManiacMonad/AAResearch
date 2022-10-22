@@ -39,7 +39,7 @@ class MediapipeAPI:
         """載入照片
 
         Returns:
-            _type_: _description_
+            Optional<image>:可省略照片
         """
         success, image = self.videoCapture.read()
         if not success:
