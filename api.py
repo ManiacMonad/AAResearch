@@ -1,16 +1,7 @@
+from typing import TypeVar
 import mediapipe as mp
 import cv2
-
-
-class Optional:
-    """
-    回傳特殊值
-    設計目標:製作簡單程式碼
-    """
-
-    def __init__(self, value):
-        self.available = value is not None
-        self.value = value
+from defs import Optional
 
 
 class MediapipeAPI:
@@ -22,20 +13,24 @@ class MediapipeAPI:
     mp_drawing_styles = mp.solutions.drawing_styles
     mp_pose = mp.solutions.pose
 
-    def __init__(self, video_port=0):
+    def __init__(self, video_port: int = 0):
         # 設定上下文(Context)
         self.videoCapture = cv2.VideoCapture(video_port)
         self.pose = MediapipeAPI.mp_pose.Pose(
             min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
-    def isPortOpened(self):
+    def releaseVideoCapture():
+        self.videoCapture.release()
+        cv2.destroyAllWindows()
+
+    def isPortOpened(self) -> bool:
         return self.videoCapture.isOpened()
 
     def print(self, x):
         global print
         print("[Mediapipe API]: " + x)
 
-    def readImage(self):
+    def readImage(self) -> Optional:
         """載入照片
 
         Returns:
@@ -80,5 +75,4 @@ while apiHandle.isPortOpened():
     # Flip the image horizontally for a selfie-view display.
     if cv2.waitKey(5) & 0xFF == 27:
         break
-cap.release()
-cv2.destroyAllWindows()
+apiHandle.dispose()
