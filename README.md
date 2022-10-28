@@ -3,3 +3,7 @@
 This is a research repository aiming to analyze and create various applications using extracted data.
 
 這是一個以使用者的動作分析與實作多項app的程式專案。
+
+## Current Goals 目前目標
+
+- [ ] Utilize Transformer
