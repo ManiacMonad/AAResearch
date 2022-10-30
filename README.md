@@ -9,3 +9,5 @@ This is a research repository aiming to analyze and create various applications 
 - [ ] MediaPipe跌倒實作+API理解
 - [ ] 光流法理解+實作
 - [ ] Transformer理解+實作
+
+Say hi to Maniac Monad!
