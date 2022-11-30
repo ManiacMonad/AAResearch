@@ -9,7 +9,9 @@ mp_pose = mp.solutions.pose
 
 currentDelta = 0
 
-# 求更新率
+# 求更新率 Get FPS
+
+
 def getFPS():
     global currentDelta
     ctime = time.time()
