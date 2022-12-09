@@ -68,8 +68,9 @@ for folderIndex in range(1, 30 + 1):
     lastPixelCenter = [0, 0, 0]
     prevFrame = 0
     plotXAxis = []
-    velocityData = []
-    pixelVelData = []
+    upperBoundVel = []
+    lowerBoundVel = []
+    meanSquareError = []
     while (True):
         imageName = str(
             Path.home() / (f"Downloads/ur_fall/{folderName}/{folderName}-{(currentFrame+1):03d}.png"))
@@ -88,6 +89,9 @@ for folderIndex in range(1, 30 + 1):
             break
         # 找出重心與影像中的重心
         massCenter, pixelCenter = processLandmarks(image, results)
+        if currentFrame == 0:
+            lastMass = massCenter
+            lastPixelCenter = pixelCenter
         # 畫節點與骨頭
         image.flags.writeable = True
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
@@ -121,10 +125,14 @@ for folderIndex in range(1, 30 + 1):
         if currentFrame - prevFrame >= 1:
             prevFrame = currentFrame
             plotXAxis.append(currentFrame)
-            pixelVelData.append(pixelVelocity)
-            velocityData.append(velocity)
-            ax.plot(plotXAxis, velocityData, "b-")
-            ax.plot(plotXAxis, pixelVelData, 'g-')
-            plt.pause(0.001)
+            meanSquareError.append(math.pow((pixelVelocity - velocity), 2))
+            ax.plot(plotXAxis, meanSquareError, "r-")
+            # upperBoundVel.append(
+            # velocity > pixelVelocity and velocity or pixelVelocity)
+            # lowerBoundVel.append(
+            # velocity < pixelVelocity and velocity or pixelVelocity)
+            # ax.plot(plotXAxis, upperBoundVel, "b-")
+            # ax.plot(plotXAxis, lowerBoundVel, 'g-')
+            plt.pause(0.00001)
 # cap.release()
 print("Done")
