@@ -127,7 +127,7 @@ for folderIndex in range(1, 30 + 1):
         pixelVelocity = np.linalg.norm(deltaPixelCenter) * 30
         # 畫上幀率(更新率)
         putText(
-            image, f"{folderIndex:02d} Frame {int(currentFrame):03d} {math.floor(velocity*100):03d} cm/s {int(pixelVelocity * 100):03d} ratio/s", (50, 30), font_scale=0.9)
+            image, f"{folderIndex:02d} Frame {int(currentFrame):03d} {math.floor(velocity*100):03d} cm/s {int(pixelVelocity * 100):03d} ratio/s", (50, 30), font_scale=1)
         cv2.imshow('MediaPipe Pose', image)
         if cv2.waitKey(5) & 0xFF == 27:
             break
