@@ -1,3 +1,5 @@
+# TODO: GPU Acceleration
+
 import cv2 as cv
 import numpy as np
 
@@ -25,7 +27,7 @@ mask = np.zeros_like(first_frame)
 # Sets image saturation to maximum
 mask[..., 1] = 255
 
-while(cap.isOpened()):
+while (cap.isOpened()):
 
     # ret = a boolean return value from getting
     # the frame, frame = the current frame being
