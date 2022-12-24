@@ -1,17 +1,19 @@
 import cv2
 import numpy as np
+from typing import NamedTuple, Tuple, List
+from configs import BASE_CONFIGURATIONS
 
 
 def putText(
     img,
-    text,
-    pos=(0, 0),
+    text: str,
+    pos: tuple = (0, 0),
     font=cv2.FONT_HERSHEY_PLAIN,
-    font_scale=3,
-    font_thickness=2,
-    text_color=(0, 255, 0),
-    text_color_bg=(0, 0, 0),
-):
+    font_scale: int = 3,
+    font_thickness: int = 2,
+    text_color: Tuple[int, int, int] = (0, 255, 0),
+    text_color_bg: Tuple[int, int, int] = (0, 0, 0),
+) -> Tuple:
 
     x, y = pos
     text_size, _ = cv2.getTextSize(text, font, font_scale, font_thickness)
@@ -30,14 +32,18 @@ def putText(
     return text_size
 
 
-def processLandmarks(image, results):
+def processLandmarks(
+    image, results, CONFIGURATIONS: BASE_CONFIGURATIONS
+) -> Tuple[Tuple[int, int], Tuple[int, int], List[Tuple[int, int]]]:
     centerOfMass = [0, 0, 0]
     centerOfPixel = [0, 0, 0]
     length = 0
     minvec = [0, 0]
     maxvec = [0, 0]
-    relativePixels = []
+    relativePixels: List[Tuple[int, int]] = []
     for i in range(0, 32 + 1):
+        if i in CONFIGURATIONS.EXCLUDE_VERTICES:
+            continue
         landmark = results.pose_landmarks.landmark[i]
         world_landmark = results.pose_world_landmarks.landmark[i]
         centerOfMass = np.add(centerOfMass, [world_landmark.x, world_landmark.y, world_landmark.z])
@@ -82,3 +88,30 @@ def processLandmarks(image, results):
         2,
     )
     return centerOfMass, centerOfPixel, relativePixels
+
+
+def getLandmarkVelocity(landmarks: List[NamedTuple], lastlandmarks, fps, CONFIGURATIONS) -> List[NamedTuple]:
+    velocity = []
+    for i in range(0, 32 + 1):
+        if i in CONFIGURATIONS.EXCLUDE_VERTICES:
+            continue
+        lastlandmarks[i][0] = landmarks[i].x
+        lastlandmarks[i][1] = landmarks[i].y
+        velocity.append(
+            [
+                (landmarks[i].x - lastlandmarks[i][0]) * fps,
+                (landmarks[i].y - lastlandmarks[i][1]) * fps,
+            ]
+        )
+    return velocity
+
+
+class _BASE_VIDEO_STREAM:
+    def readNextImage(self):
+        print("Not implemented")
+
+    def dispose(self):
+        print("Not implemented")
+
+    def getFrameRate(self):
+        print("Not implemented")
