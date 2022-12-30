@@ -64,8 +64,8 @@ def processLandmarks(
         landmark = results.pose_landmarks.landmark[i]
         relativePixels.append(
             [
-                (landmark.x - centerOfPixel[0]) / (maxvec[0] - minvec[0]),
-                (landmark.y - centerOfPixel[1]) / (maxvec[1] - minvec[1]),
+                (landmark.x - centerOfPixel[0]),
+                (landmark.y - centerOfPixel[1]),
             ]
         )
     h, w, c = image.shape

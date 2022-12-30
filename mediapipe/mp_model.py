@@ -14,10 +14,10 @@ class mp_model:
         else:
             self.model = Sequential(
                 [
-                    keras.layers.Dense(32, input_shape=((33 - 5) * 2 + (33 - 5) * 2 + 2,), activation="relu"),
-                    keras.layers.Dense(48, activation="relu"),
-                    keras.layers.Dense(40, activation="sigmoid"),
-                    keras.layers.Dense(1, activation="sigmoid"),
+                    keras.layers.Dense(32, input_shape=((33 - 5) * 2 + (33 - 5) * 2,), activation="relu"),
+                    keras.layers.Dense(128, activation="relu"),
+                    keras.layers.Dense(128, activation="relu"),
+                    keras.layers.Dense(11, activation="sigmoid"),
                 ]
             )
         self.model.compile(optimizer=legacy.Adam(), loss="mse", metrics=["accuracy"])
@@ -71,3 +71,36 @@ class VIDEO_STREAM(_BASE_VIDEO_STREAM):
 
     def getFrameRate(self):
         return self.cap.get(cv2.CAP_PROP_FPS)
+
+
+# The dataset collected at the University of Florence during 2012, has been captured using a Kinect camera.
+# It includes 9 activities: wave, drink from a bottle, answer phone,clap, tight lace, sit down, stand up, read watch, bow.
+# During acquisition, 10 subjects were asked to perform the above actions for 2/3 times. This resulted in a total of 215 activity samples.
+# We suggest a leave-one-actor-out protocol: train your classifier using all the sequences from 9 out of 10 actors
+# and test on the remaining one. Repeat this procedure for all actors and average the 10 classification accuracy values.
+# Videos depicting the actions are named GestureRecording_Id<ID_GESTURE>actor<ID_ACTOR>idAction<ID_ACTION>category<ID_CATEGORY>.avi
+
+
+class STREAM_READ_FLORENCE_FALL(_BASE_VIDEO_STREAM):
+    def __init__(self, fps, ID_GESTURE, ID_ACTOR, ID_ACTION, ID_CATEGORY) -> None:
+        self.fps = fps
+        self.currentFrame = 0
+        self.videoName = str(
+            Path.home()
+            / f"Downloads/Florence_3d_actions/GestureRecording_Id{ID_GESTURE}actor{ID_ACTOR}idAction{ID_ACTION}category{ID_CATEGORY}.avi"
+        )
+        self.capture = cv2.VideoCapture(self.videoName)
+
+    def readNextImage(self):
+        self.currentFrame += 1
+        ret, image = self.capture.read()
+        if not ret:
+            print(f"Failed to read image from video ")
+        return image
+
+    def dispose(self):
+        self.capture.release()
+        cv2.destroyAllWindows()
+
+    def getFrameRate(self):
+        return self.fps
