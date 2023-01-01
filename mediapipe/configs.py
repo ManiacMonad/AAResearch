@@ -7,7 +7,7 @@ class BASE_CONFIGURATIONS:
     def __init__(
         self,
         TRAIN=False,
-        RENDER_IMAGE=True,
+        RENDER_IMAGE=False,
         LOAD_FROM_FOLDER=True,
         NO_FALL=False,
         EXCLUDE_VERTICES=[

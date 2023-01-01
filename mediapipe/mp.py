@@ -1,8 +1,8 @@
 import cv2
 import mediapipe as mp
 import numpy as np
-import os
 import parse
+import os
 from pathlib import Path
 from typing import Callable, Tuple, List
 from utils import putText, processLandmarks, getLandmarkVelocity
@@ -88,92 +88,115 @@ def processStream(
     streamObject.dispose()
 
 
-nice = False
+pass_Lambda = False
+X_TRAIN_PERCENTAGE = 0.1
 
 
 def main():
-    global nice
+    global pass_Lambda
     CONFIGURATIONS = BASE_CONFIGURATIONS()
-    workingModel = mp_model(loadfromfile=True)
+    workingModel = mp_model(loadfromfile=False)
     batchInputs = []
     batchOutputs = []
 
     if CONFIGURATIONS.LOAD_FROM_FOLDER:
         # UR_FALL
         fileCount = 0
-        niceCount = 0
+        passCount = 0
 
         def determine(CONFIGURATIONS, massCenterVelocity, deltaLandmarkVelocity) -> float:
+            global pass_Lambda
             if CONFIGURATIONS.TRAIN:
+
                 arr = [0.0] * 11
                 if CONFIGURATIONS.NO_FALL:
-                    batchInputs.append(deltaLandmarkVelocity)
                     arr[0] = 1.0
+                    batchInputs.append(deltaLandmarkVelocity)
                     batchOutputs.append(arr)
                     return 0
                 elif massCenterVelocity >= 1.55:
-                    batchInputs.append(deltaLandmarkVelocity)
                     arr[1] = 1.0
+                    batchInputs.append(deltaLandmarkVelocity)
                     batchOutputs.append(arr)
                     return 1
                 else:
                     if massCenterVelocity < 0.8:
-                        batchInputs.append(deltaLandmarkVelocity)
                         arr[0] = 1.0
+                        batchInputs.append(deltaLandmarkVelocity)
                         batchOutputs.append(arr)
                     return 0
             else:
+                if pass_Lambda:
+                    return 1
                 predictValue = np.argmax(workingModel.predict([deltaLandmarkVelocity])[0])
-            return predictValue
+                if predictValue == 1:
+                    pass_Lambda = True
+                return predictValue
 
-        for folderIndex in range(0, 10 + 1):
+        # Training
+        print(f"Beginnning the training process on {X_TRAIN_PERCENTAGE * 100}% of UR_FALL dataset")
+        CONFIGURATIONS.TRAIN = True
+        totalIndex = 30
+        endingIndex = int(totalIndex * X_TRAIN_PERCENTAGE)
+        for folderIndex in range(0, endingIndex + 1):
             processStream(
                 determine,
                 STREAM_READ_UR_FALL(f"fall-{folderIndex:02d}-cam0-rgb", 30),
                 CONFIGURATIONS,
             )
-        # florence
-        # get all .avi in folder
-        # for filename in os.listdir(str(Path.home() / "Downloads/Florence_3d_actions/")):
-        #    if not filename.endswith(".avi"):
-        #        continue
-        #    fileCount += 1
-        #    nice = False
-    #
-    #    # split filename in this format: GestureRecording_Id<ID_GESTURE>actor<ID_ACTOR>idAction<ID_ACTION>category<ID_CATEGORY>.avi
-    #    # example: GestureRecording_Id1actor1idAction1category1.avi
-    #    parsed = parse.parse("GestureRecording_Id{}actor{}idAction{}category{}.avi", filename)
-    #    # split parsed into 4 parts
-    #    idGesture, idActor, idAction, idCategory = (int(i) for i in parsed)
-    #    print(
-    #        f"Processing {filename} with idGesture: {idGesture}, idActor: {idActor}, idAction: {idAction}, idCategory: {idCategory}"
-    #    )
-    #
-    #    def determine_florence(CONFIGURATIONS, massCenterVelocity, deltaLandmarkVelocity) -> float:
-    #        global nice
-    #        if CONFIGURATIONS.TRAIN:
-    #            arr = [0.0] * 11
-    #            arr[idCategory + 1] = 1.0
-    #            batchInputs.append(deltaLandmarkVelocity)
-    #            batchOutputs.append(arr)
-    #            return idCategory
-    #        else:
-    #            predictValue = np.argmax(workingModel.predict([deltaLandmarkVelocity])[0])
-    #            if predictValue == idCategory:
-    #                nice = True
-    #            return predictValue
-    #
-    #    processStream(
-    #        determine_florence,
-    #        STREAM_READ_FLORENCE_FALL(30, idGesture, idActor, idAction, idCategory),
-    #        CONFIGURATIONS,
-    #    )
-    #    if nice:
-    #        niceCount += 1
-    # workingModel.train(batchInputs, batchOutputs)
-    # print("Trained model. Cleaning batch")
-    # batchInputs.clear()
-    # batchOutputs.clear()
+        print(f"Preparing to fit the model with {len(batchInputs)} inputs and {len(batchOutputs)} outputs")
+        workingModel.train(batchInputs, batchOutputs)
+        print(f"Training on {X_TRAIN_PERCENTAGE * 100}% of UR_FALL dataset complete")
+
+        # Testing
+        print("Training complete, beginning testing on Florence dataset")
+        CONFIGURATIONS.TRAIN = False
+        for folderIndex in range(endingIndex + 1, totalIndex + 1):
+            pass_Lambda = False
+            fileCount += 1
+            processStream(
+                determine,
+                STREAM_READ_UR_FALL(f"fall-{folderIndex:02d}-cam0-rgb", 30),
+                CONFIGURATIONS,
+            )
+            if pass_Lambda:
+                passCount += 1
+        for filename in os.listdir(str(Path.home() / "Downloads/Florence_3d_actions/")):
+            if not filename.endswith(".avi"):
+                continue
+            fileCount += 1
+            idGesture, idActor, idAction, idCategory = (
+                int(i) for i in parse.parse("GestureRecording_Id{}actor{}idAction{}category{}.avi", filename)
+            )
+            print(
+                f"Processing {filename} with idGesture: {idGesture}, idActor: {idActor}, idAction: {idAction}, idCategory: {idCategory}"
+            )
+            pass_Lambda = True
+
+            def determine_florence(CONFIGURATIONS, massCenterVelocity, deltaLandmarkVelocity) -> float:
+                global pass_Lambda
+                if CONFIGURATIONS.TRAIN:
+                    arr = [0.0] * 11
+                    arr[idCategory + 1] = 1.0
+                    batchInputs.append(deltaLandmarkVelocity)
+                    batchOutputs.append(arr)
+                    return idCategory
+                else:
+                    if pass_Lambda == False:
+                        return 0
+                    predictValue = np.argmax(workingModel.predict([deltaLandmarkVelocity])[0])
+                    if predictValue == 1:  # detect falling
+                        pass_Lambda = False
+                    return predictValue
+
+            processStream(
+                determine_florence,
+                STREAM_READ_FLORENCE_FALL(30, idGesture, idActor, idAction, idCategory),
+                CONFIGURATIONS,
+            )
+            if pass_Lambda:
+                passCount += 1
+        print(f"Pass percentage: {passCount / fileCount * 100}% ({passCount}/{fileCount})")
     else:
         processStream(determine, VIDEO_STREAM(), CONFIGURATIONS)
 
