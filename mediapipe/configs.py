@@ -6,8 +6,8 @@ mp_pose = mp.solutions.pose
 class BASE_CONFIGURATIONS:
     def __init__(
         self,
-        TRAIN=False,
-        RENDER_IMAGE=False,
+        TRAIN=True,
+        RENDER_IMAGE=True,
         LOAD_FROM_FOLDER=True,
         NO_FALL=False,
         EXCLUDE_VERTICES=[

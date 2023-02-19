@@ -23,7 +23,7 @@ class mp_model:
         self.model.compile(optimizer=legacy.Adam(), loss="mse", metrics=["accuracy"])
 
     def train(self, x, y):
-        self.model.fit(x, y, epochs=150, batch_size=128)
+        self.model.fit(x, y, epochs=2, batch_size=128)
 
     def predict(self, velocityPerSample):
         return self.model.predict(velocityPerSample)
