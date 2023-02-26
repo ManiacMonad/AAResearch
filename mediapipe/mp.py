@@ -121,8 +121,8 @@ def main():
                 batchInputs.append(deltaLandmarkVelocity)
                 batchOutputs.append(arr)
             else:
-                predictValue = np.argmax(workingModel.predict([deltaLandmarkVelocity])[0])
-                # predictValue = massCenterVelocity > 1.45 and 1 or 0
+                # predictValue = np.argmax(workingModel.predict([deltaLandmarkVelocity])[0])
+                predictValue = massCenterVelocity > 1.2 and 1 or 0
                 print(f"predictValue: {predictValue}, fallOrNot: {fallOrNot}")
                 if predictValue != 1:
                     if predictValue == fallOrNot:
@@ -137,23 +137,24 @@ def main():
         # for folderIndex in range(1, totalIndex + 1):
         # processStream(determine, STREAM_READ_UR_FALL(f"fall-{folderIndex:02d}-cam0-rgb", 30), CONFIGURATIONS, 0)
         # print(f"TP: {TP}, TN: {TN}, FP: {FP}, FN: {FN}")
-        for filename in os.listdir(str(Path.home() / "Downloads/Florence_3d_actions/")):
-            if not filename.endswith(".avi"):
-                continue
-            idGesture, idActor, idAction, idCategory = (
-                int(i) for i in parse.parse("GestureRecording_Id{}actor{}idAction{}category{}.avi", filename)
-            )
-            if idCategory != 2:
-                continue
-            print(
-                f"Processing {filename} with idGesture: {idGesture}, idActor: {idActor}, idAction: {idAction}, idCategory: {idCategory}"
-            )
-            processStream(
-                determine,
-                STREAM_READ_FLORENCE_FALL(30, idGesture, idActor, idAction, idCategory),
-                CONFIGURATIONS,
-                idCategory,
-            )
+        # for filename in os.listdir(str(Path.home() / "Downloads/Florence_3d_actions/")):
+        #     if not filename.endswith(".avi"):
+        #         continue
+        #     idGesture, idActor, idAction, idCategory = (
+        #         int(i) for i in parse.parse("GestureRecording_Id{}actor{}idAction{}category{}.avi", filename)
+        #     )
+        #     if idCategory != 2:
+        #         continue
+        #     print(
+        #         f"Processing {filename} with idGesture: {idGesture}, idActor: {idActor}, idAction: {idAction}, idCategory: {idCategory}"
+        #     )
+        #     processStream(
+        #         determine,
+        #         STREAM_READ_FLORENCE_FALL(30, idGesture, idActor, idAction, idCategory),
+        #         CONFIGURATIONS,
+        #         idCategory,
+        #     )
+        processStream(determine, VIDEO_STREAM(), CONFIGURATIONS, 1)
         print(f"mp dnn: Correct: {Correct}, Mis1: {Mis1}, Mis2: {Mis2}")
     else:
         processStream(determine, VIDEO_STREAM(), CONFIGURATIONS)

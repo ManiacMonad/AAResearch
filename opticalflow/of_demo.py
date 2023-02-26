@@ -47,11 +47,11 @@ Correct_1 = 0  # predict not fall and correct gesture
 class CONFIGURATIONS:
     def __init__(
         self,
-        pyr_scale=0.5,  # pyr_scale = 0.5 means a classical pyramid, where each next layer is twice smaller than the previous one.
-        levels=2,  # levels = 1 means that no extra layers are created and only the original images are used.
-        winsize=5,  # winsize = 15 means that 15x15 windows are used to compute the optical flow.
-        iterations=3,  # iterations = 3 means that three iterations are done at each pyramid level.
-        poly_n=5,  # poly_n = 5 means that each pixel neighborhood has a size of 5x5 pixels.
+        pyr_scale=0.4,  # pyr_scale = 0.5 means a classical pyramid, where each next layer is twice smaller than the previous one.
+        levels=3,  # levels = 1 means that no extra layers are created and only the original images are used.
+        winsize=4,  # winsize = 15 means that 15x15 windows are used to compute the optical flow.
+        iterations=8,  # iterations = 3 means that three iterations are done at each pyramid level.
+        poly_n=6,  # poly_n = 5 means that each pixel neighborhood has a size of 5x5 pixels.
         poly_sigma=1.1,  # poly_sigma = 1.1 is the standard deviation of the Gaussian that is used to smooth derivatives used as a basis for the polynomial expansion.
         flags=cv.OPTFLOW_LK_GET_MIN_EIGENVALS,  # flags = 0 means that the algorithm calculates the minimum eigenvalue of the 2x2 normal matrix of optical flow equations (this is the fastest method).
         threshold=10.0,  # threshold = 10.0 means that the minimum eigenvalue of the 2x2 normal matrix of optical flow equations is greater than 10.0.
@@ -185,14 +185,14 @@ def masscenter_determine(optFrame, ang, mag, action):
         return action
     else:
         result = np.argmax(workingModelDNN.predict([[ang, mag]])[0])
-        cnn_result = np.argmax(workingModel.predict([optFrame])[0])
-        if cnn_result != 1:
-            if cnn_result == action:
-                Correct_0 += 1
-            else:
-                Mis2_0 += 1
-        else:
-            Mis1_0 += 1
+        # cnn_result = np.argmax(workingModel.predict([optFrame])[0])
+        # if cnn_result != 1:
+        # if cnn_result == action:
+        # Correct_0 += 1
+        # else:
+        # Mis2_0 += 1
+        # else:
+        # Mis1_0 += 1
 
         if result != 1:
             if result == action:
@@ -201,7 +201,7 @@ def masscenter_determine(optFrame, ang, mag, action):
                 Mis2_1 += 1
         else:
             Mis1_1 += 1
-        return cnn_result
+        return result
 
 
 def process_video_stream(stream_source, configs, action, ismark):
@@ -331,13 +331,13 @@ if __name__ == "__main__":
         exit(0)
     configs = CONFIGURATIONS()
 
-    # for i in range(1, 2):
-    #     cap = STREAM_READ_UR_FALL(f"fall-{i:02d}-cam0-rgb", 30)
-    #     if configs.plot:
-    #         plt.ion()
-    #     process_video_stream(cap, configs, 0, True)
-    #     if TRAIN:
-    #         trainModels()
+    for i in range(1, 2):
+        cap = STREAM_READ_UR_FALL(f"fall-{i:02d}-cam0-rgb", 30)
+        if configs.plot:
+            plt.ion()
+        process_video_stream(cap, configs, 0, True)
+        if TRAIN:
+            trainModels()
 
     i = 0
     for filename in os.listdir(str(Path.home() / "Downloads/Florence_3d_actions/")):
