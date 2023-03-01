@@ -51,25 +51,14 @@ class FolderHandler:
 
 
 class VideoStream:
-    def __init__(self, consecutive_frame_count, image_handler, configs) -> None:
-        self.consecutive_frame_count = consecutive_frame_count
+    def __init__(self, image_handler, configs) -> None:
         self.data = []
         self.image_handler = image_handler
         self.image_handler.setup_capture()
         self.configs = configs
 
-    def get_data(self):
-        if len(self.data) < self.consecutive_frame_count:
-            return None
-        return self.data
-
     def get_image(self):
         img = self.image_handler.read_image()
-        if img is None:
-            return None
-        self.data.append(img)
-        if len(self.data) > self.consecutive_frame_count:
-            self.data.pop(0)
         return img
 
     def dispose(self):
