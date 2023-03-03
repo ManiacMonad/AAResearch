@@ -1,24 +1,45 @@
 import cv2
 import numpy as np
 import math
+import pickle
 from tensorflow import keras
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import legacy
+from sklearn import tree
+
+
+class DecisionTree:
+    filename = "decision_tree_sklearn.pickle"
+
+    def __init__(self, loadfromfile=False) -> None:
+        if loadfromfile:
+            self.model = pickle.load(open(DecisionTree.filename, "rb"))
+        else:
+            self.model = tree.DecisionTreeClassifier()
+
+    def train(self, x, y):
+        self.model = self.model.fit(x, y)
+
+    def predict(self, x):
+        return self.model.predict(x)
+
+    def save(self):
+        pickle.dump(self.model, open(DecisionTree.filename, "wb"))
 
 
 class DNNModel:
     def __init__(self, loadfromfile=False):
         if loadfromfile:
-            self.model = keras.models.load_model("mp_gold_fish.h5")
+            self.model = keras.models.load_model("DNN_consecutive.h5")
 
         else:
             self.model = Sequential(
                 [
-                    Dense(128, input_shape=(330,), activation="relu"),
-                    Dense(128, activation="relu"),
-                    Dense(128, activation="relu"),
-                    Dense(11, activation="sigmoid"),
+                    Dense(512, input_shape=(330,), activation="relu"),
+                    Dense(512, activation="relu"),
+                    Dense(256, activation="relu"),
+                    Dense(11, activation="softmax"),
                 ]
             )
         self.model.compile(optimizer=legacy.Adam(), loss="categorical_crossentropy", metrics=["accuracy"])
@@ -31,7 +52,7 @@ class DNNModel:
 
     def save(self):
         print("Overriding DNNModel file")
-        self.model.save("mp_gold_fish.h5")
+        self.model.save("DNN_consecutive.h5")
 
 
 def yolo_detect(image, net):

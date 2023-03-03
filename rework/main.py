@@ -11,7 +11,8 @@ from utils import (
     Mediapipe_Person,
 )
 from stream import VideoHandler, VideoStream, FolderHandler
-from models import DNNModel, yolo_detect, yolo_wrap_detection, yolo_draw
+from models import DNNModel, DecisionTree, yolo_detect, yolo_wrap_detection, yolo_draw
+from sklearn.metrics import confusion_matrix, precision_recall_fscore_support
 import cv2
 import mediapipe as mp
 import numpy as np
@@ -20,14 +21,18 @@ import math
 
 def mediapipe_dnn_stream(configs):
     pose = mp.solutions.pose.Pose(min_detection_confidence=0.55, min_tracking_confidence=0.55)
-    model = DNNModel(loadfromfile=False)
+    model = DNNModel(loadfromfile=True)
+    clf = DecisionTree(loadfromfile=True)
 
-    for (folder_name, full_name) in enum_ur_fall():
+    y_vals = []
+    test_vals = []
+    test_clf_vals = []
+    train_x = []
+    train_y = []
+
+    for (folder_name, full_name) in enum_ur_fall(0, 1):
         stream = VideoStream(FolderHandler(full_name, configs, suffix=".png"), configs)
         aggregate_landmarks = []
-        train_x = []
-        train_y = []
-
         numbers = []
         with open(f"markers/{folder_name}.txt", "r") as f:
             numbers = [int(num) for line in f for num in line.strip().split()]
@@ -47,23 +52,43 @@ def mediapipe_dnn_stream(configs):
                 aggregate_landmarks.pop(0)
             elif len(aggregate_landmarks) < configs.consecutive_frame_count:
                 continue
-            train_x.append([val for landmarks in aggregate_landmarks for val in landmarks])
-            y_sample = [0] * 11
-            if numbers[frame] == 0:
-                y_sample[0] = 1
-            elif numbers[frame] == 1:
-                y_sample[1] = 1
 
-            train_y.append(y_sample)
-            putText(img, "Consecutive")
+            flatten = [val for landmarks in aggregate_landmarks for val in landmarks]
+
+            y_vals.append(numbers[frame])
+
+            if configs.train:
+                train_x.append(flatten)
+                y_sample = [0] * 11
+                if numbers[frame] == 0:
+                    y_sample[0] = 1
+                elif numbers[frame] == 1:
+                    y_sample[1] = 1
+                train_y.append(y_sample)
+                putText(img, f"training... y_sam={numbers[frame]}")
+            else:
+                print(model.predict([flatten])[0])
+                test_vals.append(0 if np.argmax(model.predict([flatten])[0]) == 0 else 1)
+                test_clf_vals.append(clf.predict([flatten])[0])
+                putText(img, f"act = {test_vals[len(test_vals)-1]}")
             cv2.imshow("mediapipe stream", img)
             cv2.waitKey(10)
 
         stream.dispose()
+    if configs.train:
         model.train(train_x, train_y)
+        model.save()
+        clf.train(train_x, y_vals)
+        clf.save()
+    else:
+        cf = confusion_matrix(y_vals, test_vals)
+        print("dnn (tn, fp, fn, tp) = ", cf.ravel())
+        cf = confusion_matrix(y_vals, test_clf_vals)
+        print("clf (tn, fp, fn, tp) = ", cf.ravel())
+        print(precision_recall_fscore_support(y_vals, test_vals))
 
 
-def live_stream(configs):
+def multiple_stream(configs):
 
     pose = mp.solutions.pose.Pose(min_detection_confidence=0.55, min_tracking_confidence=0.55)
 
@@ -106,7 +131,7 @@ def live_stream(configs):
                 person_id = -1
                 for id in range(0, len(test_people)):
                     dist = np.linalg.norm(np.subtract(test_people[id].rect_center, rect_center))
-                    if dist < 30:
+                    if dist < 60:
                         person_id = id
                         break
 
@@ -160,8 +185,8 @@ def live_stream(configs):
 
 def main():
     cv2.startWindowThread()
-    configs = Configs(render=True, consecutive_frame_count=5)
-    live_stream(configs)
+    configs = Configs(render=True, train=False, consecutive_frame_count=5)
+    mediapipe_dnn_stream(configs)
     cv2.destroyAllWindows()
 
 

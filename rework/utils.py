@@ -1,11 +1,10 @@
 from pathlib import Path
 from typing import Tuple, Generator
-import mediapipe
+import mediapipe as mp
 import os
 import parse
 import cv2
 
-mp_pose = mediapipe.solutions.pose
 DOWNLOAD_DIRECTORY = Path.home() / "Downloads"
 DATASETS = ["ur_fall", "Florence_3d_actions", "Dataset CAUCAFall"]
 
@@ -40,6 +39,7 @@ class Configs:
     def __init__(
         self,
         render=False,
+        train=False,
         consecutive_frame_count=5,
         exclude_verticies=[
             mp_pose.PoseLandmark.LEFT_EYE_INNER,
@@ -55,6 +55,7 @@ class Configs:
         ],
     ) -> None:
         self.render = render
+        self.train = train
         self.consecutive_frame_count = consecutive_frame_count
         self.exclude_verticies = exclude_verticies
 
@@ -172,3 +173,11 @@ def putText(
 class Mediapipe_Person:
     def __init__(self, rect_center) -> None:
         self.rect_center = rect_center
+
+
+class Mediapipe_Pose:
+    def __init__(self) -> None:
+        self.pose = mp.solutions.pose.Pose(min_detection_confidence=0.55, min_tracking_confidence=0.55)
+
+    def process(self, img):
+        return self.pose.process(img)
