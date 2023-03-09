@@ -20,7 +20,7 @@ class DecisionTree:
     def __init__(self, configs, loadfromfile=False) -> None:
         self.configs = configs
         self.type = MODEL_TYPES.Mediapipe_CLF
-        self.filename = f"{GLOBAL_CONFIGS.input_str}_decision_tree_cons_{configs.consecutive_frame_count:02d}.h5"
+        self.filename = f"models/{GLOBAL_CONFIGS.input_str}_decision_tree_cons_{configs.consecutive_frame_count:02d}.h5"
         if loadfromfile:
             self.model = pickle.load(open(self.filename, "rb"))
         else:
@@ -59,7 +59,7 @@ class XGBoostModel:
     def __init__(self, configs, loadfromfile=False) -> None:
         self.configs = configs
         self.type = MODEL_TYPES.Mediapipe_XGBoost
-        self.filename = f"{GLOBAL_CONFIGS.input_str}_xgboost_cons_{configs.consecutive_frame_count:02d}.h5"
+        self.filename = f"models/{GLOBAL_CONFIGS.input_str}_xgboost_cons_{configs.consecutive_frame_count:02d}.h5"
         if loadfromfile:
             self.model = pickle.load(open(self.filename, "rb"))
         else:
@@ -128,7 +128,7 @@ class DNNModel:
     def __init__(self, configs, loadfromfile=False):
         self.type = MODEL_TYPES.Mediapipe_DNN
         self.configs = configs
-        self.filename = f"{GLOBAL_CONFIGS.input_str}_Mediapipe_DNN_cons_{configs.consecutive_frame_count:02d}.h5"
+        self.filename = f"models/{GLOBAL_CONFIGS.input_str}_Mediapipe_DNN_cons_{configs.consecutive_frame_count:02d}.h5"
         if loadfromfile:
             self.model = keras.models.load_model(self.filename)
 

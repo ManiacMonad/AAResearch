@@ -26,14 +26,14 @@ import matplotlib.pyplot as plt
 def mediapipe_dnn_stream(start, end, configs: Configs):
     pose = Mediapipe_Pose()
     models = [
-        # DNNModel(
-        # configs,
-        # loadfromfile=not (MODEL_TYPES.Mediapipe_DNN in configs.train),
-        # ),
-        # DecisionTree(
-        # configs,
-        # loadfromfile=not (MODEL_TYPES.Mediapipe_CLF in configs.train),
-        # ),
+        DNNModel(
+            configs,
+            loadfromfile=not (MODEL_TYPES.Mediapipe_DNN in configs.train),
+        ),
+        DecisionTree(
+            configs,
+            loadfromfile=not (MODEL_TYPES.Mediapipe_CLF in configs.train),
+        ),
         # ManualDecisionTree(configs, 11.80, test_torso_thres),
         XGBoostModel(
             configs,
@@ -139,7 +139,7 @@ def mediapipe_dnn_stream(start, end, configs: Configs):
                 model.save()
     if configs.test != []:
         target_names = ["no action", "fall"]
-        with open(f"{GLOBAL_CONFIGS.input_str}_report_1_xgboost.txt", "a") as f:
+        with open(f"{GLOBAL_CONFIGS.input_str}_report_1.txt", "a") as f:
             f.write(f"{configs.consecutive_frame_count}\t")
             for i in range(0, len(models)):
                 model = models[i]
@@ -279,7 +279,7 @@ def percentage_1():
 
 def cfc_1():
     cv2.startWindowThread()
-    for cfc in range(2, 51):
+    for cfc in range(51, 101):
         mediapipe_dnn_stream(
             11,
             20,
