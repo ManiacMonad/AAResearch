@@ -15,7 +15,7 @@ from utils import (
 )
 from configs import GLOBAL_CONFIGS
 from stream import VideoHandler, VideoStream, FolderHandler
-from models import DNNModel, DecisionTree, ManualDecisionTree, yolo_detect, yolo_wrap_detection, yolo_draw
+from models import DNNModel, DecisionTree, ManualDecisionTree, XGBoostModel, yolo_detect, yolo_wrap_detection, yolo_draw
 from sklearn.metrics import confusion_matrix, classification_report
 import cv2
 import numpy as np
@@ -23,18 +23,22 @@ import math
 import matplotlib.pyplot as plt
 
 # left-inclusive, right-exclusive
-def mediapipe_dnn_stream(start, end, configs: Configs, test_torso_thres):
+def mediapipe_dnn_stream(start, end, configs: Configs):
     pose = Mediapipe_Pose()
     models = [
-        DNNModel(
+        # DNNModel(
+        # configs,
+        # loadfromfile=not (MODEL_TYPES.Mediapipe_DNN in configs.train),
+        # ),
+        # DecisionTree(
+        # configs,
+        # loadfromfile=not (MODEL_TYPES.Mediapipe_CLF in configs.train),
+        # ),
+        # ManualDecisionTree(configs, 11.80, test_torso_thres),
+        XGBoostModel(
             configs,
-            loadfromfile=not (MODEL_TYPES.Mediapipe_DNN in configs.train),
+            loadfromfile=not (MODEL_TYPES.Mediapipe_XGBoost in configs.train),
         ),
-        DecisionTree(
-            configs,
-            loadfromfile=not (MODEL_TYPES.Mediapipe_CLF in configs.train),
-        ),
-        ManualDecisionTree(configs, 11.80, test_torso_thres),
     ]
 
     x_array_input = []
@@ -110,8 +114,6 @@ def mediapipe_dnn_stream(start, end, configs: Configs, test_torso_thres):
                 y_sample = [0] * 11
                 y_sample[numbers[frame]] = 1
                 y_array_truth.append(y_sample)
-
-                putText(img, f"train {int(configs.train_percentage * 100):02d}%")
             if configs.test != []:
                 for i in range(0, len(models)):
                     model = models[i]
@@ -121,7 +123,6 @@ def mediapipe_dnn_stream(start, end, configs: Configs, test_torso_thres):
                         batch = np.argmax(batch)
                         y_predict_dummy[i].append(batch)
 
-                        # print(f"{model.type} {int(configs.train_percentage * 100):02d}%")
                 if configs.render:
                     putText(img, f"testing cfc={configs.consecutive_frame_count}%")
             if configs.render:
@@ -138,8 +139,8 @@ def mediapipe_dnn_stream(start, end, configs: Configs, test_torso_thres):
                 model.save()
     if configs.test != []:
         target_names = ["no action", "fall"]
-        with open(f"{GLOBAL_CONFIGS.input_str}_report_thres.txt", "a") as f:
-            f.write(f"{test_torso_thres}\t")
+        with open(f"{GLOBAL_CONFIGS.input_str}_report_1_xgboost.txt", "a") as f:
+            f.write(f"{configs.consecutive_frame_count}\t")
             for i in range(0, len(models)):
                 model = models[i]
                 if model.type in configs.test:
@@ -278,7 +279,7 @@ def percentage_1():
 
 def cfc_1():
     cv2.startWindowThread()
-    for cfc in range(41, 51):
+    for cfc in range(2, 51):
         mediapipe_dnn_stream(
             11,
             20,
@@ -366,4 +367,4 @@ def visualize_clf():
 
 
 if __name__ == "__main__":
-    visualize_clf()
+    cfc_1()

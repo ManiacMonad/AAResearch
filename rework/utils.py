@@ -41,6 +41,7 @@ class MODEL_TYPES(Enum):
     Mediapipe_DNN = 0
     Mediapipe_CLF = 1
     Manual_CLF = 2
+    Mediapipe_XGBoost = 3
 
 
 mp_pose = mp.solutions.pose

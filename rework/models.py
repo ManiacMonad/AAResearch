@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import math
 import pickle
+from xgboost import XGBClassifier
 from utils import MODEL_TYPES, get_center_of_mass
 from tensorflow import keras
 from tensorflow.keras.models import Sequential
@@ -43,6 +44,38 @@ class DecisionTree:
 
     def to_text(self):
         return tree.export_text(self.model)
+
+    def conv_to_format_input(self, flatten):
+        return flatten
+
+    def conv_train_to_format(self, train_y_array):
+        return 1 if train_y_array[1] == 1 else 0
+
+    def save(self):
+        pickle.dump(self.model, open(self.filename, "wb"))
+
+
+class XGBoostModel:
+    def __init__(self, configs, loadfromfile=False) -> None:
+        self.configs = configs
+        self.type = MODEL_TYPES.Mediapipe_XGBoost
+        self.filename = f"{GLOBAL_CONFIGS.input_str}_xgboost_cons_{configs.consecutive_frame_count:02d}.h5"
+        if loadfromfile:
+            self.model = pickle.load(open(self.filename, "rb"))
+        else:
+            self.model = XGBClassifier(n_estimators=100, learning_rate=0.3)
+
+    def train(self, x, y):
+        self.model = self.model.fit(x, [self.conv_train_to_format(sample) for sample in y])
+
+    def predict(self, input):
+        val = self.model.predict([self.conv_to_format_input(x) for x in input])
+        batch = []
+        for samp in val:
+            arr = [0.0] * 11
+            arr[samp] = 1.0
+            batch.append(arr)
+        return batch
 
     def conv_to_format_input(self, flatten):
         return flatten

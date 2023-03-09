@@ -4,4 +4,4 @@ mp_pose = mp_solutions.pose
 
 
 class GLOBAL_CONFIGS:
-    input_str = "proc"
+    input_str = "relcom"
