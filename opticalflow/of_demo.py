@@ -165,7 +165,7 @@ class dnn_model:
         self.model.save("dnn_whale.h5")
 
 
-MARK = False
+MARK = True
 TRAIN = False
 batchInputs = []
 batchInputsDNN = []
@@ -297,10 +297,10 @@ def mark_video_stream(stream_source):
         if k == ord("q"):
             break
         if k == ord("y"):
-            with open(f"florence_markers/{stream_source.folderName}.txt", "a") as f:
+            with open(f"markers/{stream_source.folderName}.txt", "a") as f:
                 f.write(f"1 ")
-        if k == ord("n"):
-            with open(f"florence_markers/{stream_source.folderName}.txt", "a") as f:
+        else:
+            with open(f"markers/{stream_source.folderName}.txt", "a") as f:
                 f.write(f"0 ")
         i += 1
 
@@ -318,16 +318,8 @@ def trainModels():
 
 if __name__ == "__main__":
     if MARK:
-        # for i in range(1, 10):
-        # mark_video_stream(STREAM_READ_UR_FALL(f"fall-{i:02d}-cam0-rgb", 30))
-        for filename in os.listdir(str(Path.home() / "Downloads/Florence_3d_actions/")):
-            if not filename.endswith(".avi"):
-                continue
-            idGesture, idActor, idAction, idCategory = (
-                int(i) for i in parse.parse("GestureRecording_Id{}actor{}idAction{}category{}.avi", filename)
-            )
-            print(idGesture, idActor, idAction, idCategory)
-            mark_video_stream(STREAM_READ_FLORENCE_FALL(30, idGesture, idActor, idAction, idCategory))
+        for i in range(15, 16):
+            mark_video_stream(STREAM_READ_UR_FALL(f"fall-{i:02d}-cam0-rgb", 30))
         exit(0)
     configs = CONFIGURATIONS()
 

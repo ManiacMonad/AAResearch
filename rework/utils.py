@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import Tuple, Generator
+from enum import Enum
 import mediapipe as mp
+import numpy as np
 import os
 import parse
 import cv2
@@ -35,11 +37,22 @@ CAUCAFALL_ACTION_TYPES = [
 ]
 
 
+class MODEL_TYPES(Enum):
+    Mediapipe_DNN = 0
+    Mediapipe_CLF = 1
+    Manual_CLF = 2
+
+
+mp_pose = mp.solutions.pose
+
+
 class Configs:
     def __init__(
         self,
         render=False,
-        train=False,
+        train=[],
+        test=[],
+        train_percentage=1,
         consecutive_frame_count=5,
         exclude_verticies=[
             mp_pose.PoseLandmark.LEFT_EYE_INNER,
@@ -56,6 +69,8 @@ class Configs:
     ) -> None:
         self.render = render
         self.train = train
+        self.test = test
+        self.train_percentage = train_percentage
         self.consecutive_frame_count = consecutive_frame_count
         self.exclude_verticies = exclude_verticies
 
@@ -73,7 +88,7 @@ def parse_florence_3d_name(mini_name) -> Tuple[int]:
 def enum_ur_fall(start_index=None, end_index=None) -> Generator[Tuple[str, str], None, None]:
     start_index = start_index or 1
     end_index = end_index or 30
-    for i in range(start_index, end_index + 1):
+    for i in range(start_index, end_index):
         folder_name = f"fall-{i:02d}-cam0-rgb"
         full_folder_name = str(DOWNLOAD_DIRECTORY / ("ur_fall/" + folder_name))
         yield (folder_name, full_folder_name)
@@ -107,33 +122,44 @@ def get_landmark(raw_landmarks, configs):
     landmark_pos = []
     i = -1
     for raw_landmark in raw_landmarks:
-        landmark_pos.append((0.0, 0.0))
+        landmark_pos.append(np.array([0.0, 0.0]))
         i += 1
         if i in configs.exclude_verticies:
             continue
-        landmark_pos[i] = (raw_landmark.x, raw_landmark.y)
+        landmark_pos[i] = np.array([raw_landmark.x, raw_landmark.y])
+
+    com = get_center_of_mass(landmark_pos, configs)
+    for i in range(0, 32 + 1):
+        if i in configs.exclude_verticies:
+            continue
+        landmark_pos[i] = np.subtract(landmark_pos[i], com)
+
+    landmark_pos.append(com)  # so that it will include the motion of the actual body
     return landmark_pos
 
 
-def get_center_of_mass(landmarks):
+# this function is left-included and right-excluded [0, n)
+def slice_dataset(start, end, percentage):
+    lerp_sln = int(start + (end - start) * percentage)
+    return (start, lerp_sln), (lerp_sln, end)
+
+
+def get_center_of_mass(landmarks, configs):
     center = (0.0, 0.0)
-    i = 0
-    for ld in landmarks:
-        if ld[0] == 0.0 and ld[1] == 0.0:
+    real = 0
+    for i in range(0, 32 + 1):
+        if i in configs.exclude_verticies:
             continue
-        center = (center[0] + ld[0], center[1] + ld[1])
-        i += 1
-    return (center[0] / i, center[1] / i)
+        center += landmarks[i]
+        real += 1
+    return np.divide(center, real)
 
 
 def get_landmark_velocity(landmarks, lastlandmarks, fps, configs):
     velocity = []
     for i in enum_landmark_id(configs):
         velocity.append(
-            (
-                (landmarks[i].x - lastlandmarks[i][0]) * fps,
-                (landmarks[i].y - lastlandmarks[i][1]) * fps,
-            )
+            np.array([(landmarks[i].x - lastlandmarks[i][0]) * fps, (landmarks[i].y - lastlandmarks[i][1]) * fps])
         )
     return velocity
 

@@ -2,57 +2,136 @@ import cv2
 import numpy as np
 import math
 import pickle
+from utils import MODEL_TYPES, get_center_of_mass
 from tensorflow import keras
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import legacy
 from sklearn import tree
+import mediapipe as mp
+from configs import GLOBAL_CONFIGS
+import matplotlib.pyplot as plt
+
+mp_pose = mp.solutions.pose
 
 
 class DecisionTree:
-    filename = "decision_tree_sklearn.pickle"
-
-    def __init__(self, loadfromfile=False) -> None:
+    def __init__(self, configs, loadfromfile=False) -> None:
+        self.configs = configs
+        self.type = MODEL_TYPES.Mediapipe_CLF
+        self.filename = f"{GLOBAL_CONFIGS.input_str}_decision_tree_cons_{configs.consecutive_frame_count:02d}.h5"
         if loadfromfile:
-            self.model = pickle.load(open(DecisionTree.filename, "rb"))
+            self.model = pickle.load(open(self.filename, "rb"))
         else:
             self.model = tree.DecisionTreeClassifier()
 
     def train(self, x, y):
-        self.model = self.model.fit(x, y)
+        self.model = self.model.fit(x, [self.conv_train_to_format(sample) for sample in y])
 
-    def predict(self, x):
-        return self.model.predict(x)
+    def predict(self, input):
+        val = self.model.predict([self.conv_to_format_input(x) for x in input])
+        batch = []
+        for samp in val:
+            arr = [0.0] * 11
+            arr[samp] = 1.0
+            batch.append(arr)
+        return batch
+
+    def visualize(self):
+        tree.plot_tree(self.model)
+        plt.show()
+
+    def to_text(self):
+        return tree.export_text(self.model)
+
+    def conv_to_format_input(self, flatten):
+        return flatten
+
+    def conv_train_to_format(self, train_y_array):
+        return 1 if train_y_array[1] == 1 else 0
 
     def save(self):
-        pickle.dump(self.model, open(DecisionTree.filename, "wb"))
+        pickle.dump(self.model, open(self.filename, "wb"))
+
+
+class ManualDecisionTree:
+    def __init__(self, configs, com_mag_threshold, torso_mag_threshold, loadfromfile=False) -> None:
+        self.type = MODEL_TYPES.Manual_CLF
+        self.configs = configs
+        self.com_mag_threshold = com_mag_threshold
+        self.torso_mag_threshold = torso_mag_threshold
+
+    def train(self, x, y):
+        pass
+
+    def predict(self, input):
+        return self.sub_predict([self.conv_to_format_input(x) for x in input])
+
+    def sub_predict(self, val):
+        batch = []
+        for x in val:
+            arr = [0.0] * 11
+            com_mag, torso_mag = x
+            arr[1] = 1.0
+            if com_mag < self.com_mag_threshold or torso_mag < self.torso_mag_threshold:
+                arr[0] = 1.0
+                arr[1] = 0.0
+
+            batch.append(arr)
+
+        return batch
+
+    def conv_to_format_input(self, flatten):
+        return flatten
+
+    def conv_train_to_format(self, train_y_array):
+        return 1 if train_y_array[1] == 1 else 0
+
+    def save(self):
+        pass
 
 
 class DNNModel:
-    def __init__(self, loadfromfile=False):
+    def __init__(self, configs, loadfromfile=False):
+        self.type = MODEL_TYPES.Mediapipe_DNN
+        self.configs = configs
+        self.filename = f"{GLOBAL_CONFIGS.input_str}_Mediapipe_DNN_cons_{configs.consecutive_frame_count:02d}.h5"
         if loadfromfile:
-            self.model = keras.models.load_model("DNN_consecutive.h5")
+            self.model = keras.models.load_model(self.filename)
 
         else:
             self.model = Sequential(
                 [
-                    Dense(512, input_shape=(330,), activation="relu"),
+                    Dense(
+                        512,
+                        input_shape=(
+                            (
+                                2 * (configs.consecutive_frame_count - 1)
+                                if GLOBAL_CONFIGS.input_str == "proc"
+                                else 68 * (configs.consecutive_frame_count)
+                            ),
+                        ),
+                        activation="relu",
+                    ),
                     Dense(512, activation="relu"),
-                    Dense(256, activation="relu"),
+                    Dense(512, activation="relu"),
                     Dense(11, activation="softmax"),
                 ]
             )
         self.model.compile(optimizer=legacy.Adam(), loss="categorical_crossentropy", metrics=["accuracy"])
 
     def train(self, x, y):
-        self.model.fit(x, y, epochs=150, batch_size=128)
+        self.model.fit(x, y, epochs=500, batch_size=128)
 
-    def predict(self, velocityPerSample):
-        return self.model.predict(velocityPerSample)
+    def predict(self, input):
+        return self.model.predict([self.conv_to_format_input(x) for x in input])
+
+    def conv_to_format_input(self, flatten):
+        return flatten
 
     def save(self):
         print("Overriding DNNModel file")
-        self.model.save("DNN_consecutive.h5")
+        self.model.save(self.filename)
 
 
 def yolo_detect(image, net):
