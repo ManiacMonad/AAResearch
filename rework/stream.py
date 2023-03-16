@@ -53,11 +53,14 @@ class FolderHandler:
 class VideoStream:
     def __init__(self, image_handler, configs) -> None:
         self.data = []
+        self.captured = False
         self.image_handler = image_handler
-        self.image_handler.setup_capture()
         self.configs = configs
 
     def get_image(self):
+        if not self.captured:
+            self.captured = True
+            self.image_handler.setup_capture()
         img = self.image_handler.read_image()
         return img
 

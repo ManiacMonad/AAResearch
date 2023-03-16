@@ -8,7 +8,7 @@ import parse
 import cv2
 
 DOWNLOAD_DIRECTORY = Path.home() / "Downloads"
-DATASETS = ["ur_fall", "Florence_3d_actions", "Dataset CAUCAFall"]
+DATASETS_locations = ["ur_fall", "Florence_3d_actions", "Dataset CAUCAFall"]
 
 CAUCAFALL_ENUMS = {
     "Fall backwards": 0,
@@ -37,11 +37,22 @@ CAUCAFALL_ACTION_TYPES = [
 ]
 
 
+class DATASETS(Enum):
+    ur_fall = 0
+    Florence_3d_actions = 1
+    Dataset_CAUCAFall = 2
+
+
 class MODEL_TYPES(Enum):
     Mediapipe_DNN = 0
     Mediapipe_CLF = 1
     Manual_CLF = 2
     Mediapipe_XGBoost = 3
+
+
+class INPUT_TYPES(Enum):
+    Proc = 0
+    Relcom = 1
 
 
 mp_pose = mp.solutions.pose
@@ -55,6 +66,8 @@ class Configs:
         test=[],
         train_percentage=1,
         consecutive_frame_count=5,
+        compress_frames=1,
+        input_type=INPUT_TYPES.Proc,
         exclude_verticies=[
             mp_pose.PoseLandmark.LEFT_EYE_INNER,
             mp_pose.PoseLandmark.LEFT_EYE,
@@ -71,8 +84,10 @@ class Configs:
         self.render = render
         self.train = train
         self.test = test
+        self.compress_frames = compress_frames
         self.train_percentage = train_percentage
         self.consecutive_frame_count = consecutive_frame_count
+        self.input_type = input_type
         self.exclude_verticies = exclude_verticies
 
 
@@ -101,7 +116,7 @@ def enum_florence_3d() -> Generator[Tuple[str, str], None, None]:
     for fname in filenames:
         if not fname.endswith(".avi"):
             continue
-        full_fname = str(DOWNLOAD_DIRECTORY / fname)
+        full_fname = str(DOWNLOAD_DIRECTORY / "Florence_3d_actions" / fname)
         yield (fname, full_fname)
 
 

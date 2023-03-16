@@ -3,15 +3,15 @@ import numpy as np
 import math
 import pickle
 from xgboost import XGBClassifier
-from utils import MODEL_TYPES, get_center_of_mass
+from utils import MODEL_TYPES, get_center_of_mass, INPUT_TYPES
 from tensorflow import keras
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import legacy
 from sklearn import tree
 import mediapipe as mp
-from configs import GLOBAL_CONFIGS
 import matplotlib.pyplot as plt
+import os
 
 mp_pose = mp.solutions.pose
 
@@ -20,7 +20,7 @@ class DecisionTree:
     def __init__(self, configs, loadfromfile=False) -> None:
         self.configs = configs
         self.type = MODEL_TYPES.Mediapipe_CLF
-        self.filename = f"models/{GLOBAL_CONFIGS.input_str}_decision_tree_cons_{configs.consecutive_frame_count:02d}.h5"
+        self.filename = f"models/{str(configs.input_type)}_decision_tree_cons_{configs.consecutive_frame_count:02d}.h5"
         if loadfromfile:
             self.model = pickle.load(open(self.filename, "rb"))
         else:
@@ -49,7 +49,10 @@ class DecisionTree:
         return flatten
 
     def conv_train_to_format(self, train_y_array):
-        return 1 if train_y_array[1] == 1 else 0
+        return np.argmax(train_y_array)
+
+    def delete(self):
+        os.remove(self.filename)
 
     def save(self):
         pickle.dump(self.model, open(self.filename, "wb"))
@@ -59,7 +62,7 @@ class XGBoostModel:
     def __init__(self, configs, loadfromfile=False) -> None:
         self.configs = configs
         self.type = MODEL_TYPES.Mediapipe_XGBoost
-        self.filename = f"models/{GLOBAL_CONFIGS.input_str}_xgboost_cons_{configs.consecutive_frame_count:02d}.h5"
+        self.filename = f"models/{str(configs.input_type)}_xgboost_cons_{configs.consecutive_frame_count:02d}.h5"
         if loadfromfile:
             self.model = pickle.load(open(self.filename, "rb"))
         else:
@@ -69,7 +72,7 @@ class XGBoostModel:
         self.model = self.model.fit(x, [self.conv_train_to_format(sample) for sample in y])
 
     def predict(self, input):
-        val = self.model.predict([self.conv_to_format_input(x) for x in input])
+        val = self.model.predict(input)
         batch = []
         for samp in val:
             arr = [0.0] * 11
@@ -77,11 +80,11 @@ class XGBoostModel:
             batch.append(arr)
         return batch
 
-    def conv_to_format_input(self, flatten):
-        return flatten
-
     def conv_train_to_format(self, train_y_array):
-        return 1 if train_y_array[1] == 1 else 0
+        return np.argmax(train_y_array)
+
+    def delete(self):
+        os.remove(self.filename)
 
     def save(self):
         pickle.dump(self.model, open(self.filename, "wb"))
@@ -98,7 +101,7 @@ class ManualDecisionTree:
         pass
 
     def predict(self, input):
-        return self.sub_predict([self.conv_to_format_input(x) for x in input])
+        return self.sub_predict(input)
 
     def sub_predict(self, val):
         batch = []
@@ -114,13 +117,13 @@ class ManualDecisionTree:
 
         return batch
 
-    def conv_to_format_input(self, flatten):
-        return flatten
-
     def conv_train_to_format(self, train_y_array):
-        return 1 if train_y_array[1] == 1 else 0
+        return np.argmax(train_y_array)
 
     def save(self):
+        pass
+
+    def delete(self):
         pass
 
 
@@ -128,7 +131,7 @@ class DNNModel:
     def __init__(self, configs, loadfromfile=False):
         self.type = MODEL_TYPES.Mediapipe_DNN
         self.configs = configs
-        self.filename = f"models/{GLOBAL_CONFIGS.input_str}_Mediapipe_DNN_cons_{configs.consecutive_frame_count:02d}.h5"
+        self.filename = f"models/{str(configs.input_type)}_Mediapipe_DNN_cons_{configs.consecutive_frame_count:02d}.h5"
         if loadfromfile:
             self.model = keras.models.load_model(self.filename)
 
@@ -140,7 +143,7 @@ class DNNModel:
                         input_shape=(
                             (
                                 2 * (configs.consecutive_frame_count - 1)
-                                if GLOBAL_CONFIGS.input_str == "proc"
+                                if configs.input_type == INPUT_TYPES.Proc
                                 else 68 * (configs.consecutive_frame_count)
                             ),
                         ),
@@ -157,14 +160,14 @@ class DNNModel:
         self.model.fit(x, y, epochs=500, batch_size=128)
 
     def predict(self, input):
-        return self.model.predict([self.conv_to_format_input(x) for x in input])
-
-    def conv_to_format_input(self, flatten):
-        return flatten
+        return self.model.predict(input)
 
     def save(self):
         print("Overriding DNNModel file")
         self.model.save(self.filename)
+
+    def delete(self):
+        os.remove(self.filename)
 
 
 def yolo_detect(image, net):
