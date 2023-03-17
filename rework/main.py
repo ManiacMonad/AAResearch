@@ -18,6 +18,7 @@ from utils import (
 from stream import VideoHandler, VideoStream, FolderHandler
 from models import DNNModel, DecisionTree, ManualDecisionTree, XGBoostModel, yolo_detect, yolo_wrap_detection, yolo_draw
 from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.model_selection import KFold
 import cv2
 import numpy as np
 import math
@@ -100,7 +101,7 @@ def get_florence_buffer(start, end, configs):
 
 
 # left-inclusive, right-exclusive
-def mediapipe_dnn_stream(buffers: list[DatasetBuffer], configs: Configs):
+def mediapipe_dnn_stream(buffers: list[DatasetBuffer], save_name, configs: Configs):
     pose = Mediapipe_Pose()
     models = [
         DNNModel(
@@ -190,7 +191,7 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], configs: Configs):
                 model.save()
     if configs.test != []:
         target_names = ["no action", "fall", "drink"]
-        with open(f"mult3_{str(configs.input_type)}_report_2_cmp{str(configs.compress_frames)}.txt", "a") as f:
+        with open(save_name, "a") as f:
             f.write(f"{configs.consecutive_frame_count}\t")
             for i in range(0, len(models)):
                 model = models[i]
@@ -339,33 +340,46 @@ def percentage_1():
 
 def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
     cv2.startWindowThread()
-    train_buffer = get_urfall_buffer(11, 20, Configs(input_type=input_type)) + get_florence_buffer(
-        16, 20000000000, Configs(input_type=input_type)
+    # train_buffer = get_urfall_buffer(11, 20, Configs(input_type=input_type)) + get_florence_buffer(
+    #     16, 20000000000, Configs(input_type=input_type)
+    # )
+    # test_buffer = get_urfall_buffer(1, 10, Configs(input_type=input_type)) + get_florence_buffer(
+    #     1, 16, Configs(input_type=input_type)
+    # )
+    kfold_buffer = get_urfall_buffer(1, 30, Configs(input_type=input_type)) + get_florence_buffer(
+        1, 20000000000, Configs(input_type=input_type)
     )
-    test_buffer = get_urfall_buffer(1, 10, Configs(input_type=input_type)) + get_florence_buffer(
-        1, 16, Configs(input_type=input_type)
-    )
+
+    kfold = KFold(n_splits=5, shuffle=True)
     for cfc in range(2, 21):
-        cfg = Configs(
-            render=False,
-            input_type=input_type,
-            consecutive_frame_count=cfc,
-            compress_frames=cmp_size,
-            train=[x for x in MODEL_TYPES],
-            test=[],
-            train_percentage=1.0,
-        )
-        mediapipe_dnn_stream(train_buffer, cfg)
-        cfg_1 = Configs(
-            render=False,
-            input_type=input_type,
-            consecutive_frame_count=cfc,
-            compress_frames=cmp_size,
-            train=[],
-            test=[x for x in MODEL_TYPES],
-            train_percentage=1.0,
-        )
-        mediapipe_dnn_stream(test_buffer, cfg_1)
+        for i, (train_index, test_index) in enumerate(kfold.split(kfold_buffer)):
+            mediapipe_dnn_stream(
+                [kfold_buffer[x] for x in train_index],
+                f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}",
+                Configs(
+                    render=False,
+                    input_type=input_type,
+                    consecutive_frame_count=cfc,
+                    compress_frames=cmp_size,
+                    train=[x for x in MODEL_TYPES],
+                    test=[],
+                    train_percentage=1.0,
+                ),
+            )
+            mediapipe_dnn_stream(
+                [kfold_buffer[x] for x in test_index],
+                f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}",
+                Configs(
+                    render=False,
+                    input_type=input_type,
+                    consecutive_frame_count=cfc,
+                    compress_frames=cmp_size,
+                    train=[],
+                    test=[x for x in MODEL_TYPES],
+                    train_percentage=1.0,
+                ),
+            )
+
     cv2.destroyAllWindows()
 
 
@@ -408,4 +422,4 @@ def visualize_clf():
 
 if __name__ == "__main__":
     for cmp_size in range(0, 4):
-        cfc_1(input_type=INPUT_TYPES.Relcom, cmp_size=cmp_size)
+        cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=cmp_size)
