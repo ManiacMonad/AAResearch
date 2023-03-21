@@ -190,28 +190,27 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], save_name, configs: Confi
                 model.train(x_manual_input if configs.input_type == INPUT_TYPES.Proc else x_array_input, y_array_truth)
                 model.save()
     if configs.test != []:
+        reports = []
         target_names = ["no action", "fall", "drink"]
-        with open(save_name, "a") as f:
-            f.write(f"{configs.consecutive_frame_count}\t")
-            for i in range(0, len(models)):
-                model = models[i]
-                model.delete()
-                if model.type in configs.test:
-                    batch_result = model.predict(
-                        x_manual_input if configs.input_type == INPUT_TYPES.Proc else x_array_input
-                    )
-                    batch_result = [np.argmax(sample) for sample in batch_result]
-                    cf = confusion_matrix(y_dummy_truth, batch_result)
-                    report = classification_report(
-                        y_dummy_truth,
-                        batch_result,
-                        labels=range(len(target_names)),
-                        target_names=target_names,
-                        output_dict=True,
-                    )
-                    percentage = int(configs.train_percentage * 100)
-                    f.write(str(report["fall"]["recall"]) + "\t" + str(report["drink"]["recall"]) + "\t")
-            f.write("\n")
+        for i in range(0, len(models)):
+            model = models[i]
+            model.delete()
+            if model.type in configs.test:
+                batch_result = model.predict(
+                    x_manual_input if configs.input_type == INPUT_TYPES.Proc else x_array_input
+                )
+                batch_result = [np.argmax(sample) for sample in batch_result]
+                cf = confusion_matrix(y_dummy_truth, batch_result)
+                report = classification_report(
+                    y_dummy_truth,
+                    batch_result,
+                    labels=range(len(target_names)),
+                    target_names=target_names,
+                    output_dict=True,
+                )
+                reports.append(report)
+
+        return reports
 
 
 def multiple_stream(configs):
@@ -351,11 +350,12 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
     )
 
     kfold = KFold(n_splits=5, shuffle=True)
-    for cfc in range(2, 21):
+    for cfc in range(21, 100):
+        buffer = [0, 0, 0, 0, 0, 0]
         for i, (train_index, test_index) in enumerate(kfold.split(kfold_buffer)):
             mediapipe_dnn_stream(
                 [kfold_buffer[x] for x in train_index],
-                f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}",
+                f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
                 Configs(
                     render=False,
                     input_type=input_type,
@@ -366,9 +366,9 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
                     train_percentage=1.0,
                 ),
             )
-            mediapipe_dnn_stream(
+            reports = mediapipe_dnn_stream(
                 [kfold_buffer[x] for x in test_index],
-                f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}",
+                f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
                 Configs(
                     render=False,
                     input_type=input_type,
@@ -379,6 +379,14 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
                     train_percentage=1.0,
                 ),
             )
+            for i in range(0, len(reports)):
+                buffer[i * 2] = (buffer[i * 2] + reports[i]["fall"]["recall"]) / 2
+                buffer[i * 2 + 1] = (buffer[i * 2 + 1] + reports[i]["drink"]["recall"]) / 2
+        with open(f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt", "a") as f:
+            f.write(f"{cfc}\t")
+            for i in range(0, len(buffer)):
+                f.write(f"{buffer[i]}\t")
+            f.write("\n")
 
     cv2.destroyAllWindows()
 
@@ -422,4 +430,4 @@ def visualize_clf():
 
 if __name__ == "__main__":
     for cmp_size in range(0, 4):
-        cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=cmp_size)
+        cfc_1(input_type=INPUT_TYPES.Relcom, cmp_size=cmp_size)
