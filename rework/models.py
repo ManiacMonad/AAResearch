@@ -157,7 +157,7 @@ class DNNModel:
         self.model.compile(optimizer=legacy.Adam(), loss="categorical_crossentropy", metrics=["accuracy"])
 
     def train(self, x, y):
-        self.model.fit(x, y, epochs=500, batch_size=128)
+        self.model.fit(x, y, epochs=200, batch_size=128)
 
     def predict(self, input):
         return self.model.predict(input)
