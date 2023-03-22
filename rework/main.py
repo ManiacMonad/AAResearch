@@ -350,7 +350,7 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
     )
 
     kfold = KFold(n_splits=5, shuffle=True)
-    for cfc in range(21, 100):
+    for cfc in range(2, 100):
         buffer = [0, 0, 0, 0, 0, 0]
         for i, (train_index, test_index) in enumerate(kfold.split(kfold_buffer)):
             mediapipe_dnn_stream(
@@ -382,7 +382,7 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
             for i in range(0, len(reports)):
                 buffer[i * 2] = (buffer[i * 2] + reports[i]["fall"]["recall"]) / 2
                 buffer[i * 2 + 1] = (buffer[i * 2 + 1] + reports[i]["drink"]["recall"]) / 2
-        with open(f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt", "a") as f:
+        with open(f"mult3_kfold_{str(input_type)}_cmp{cmp_size:02d}.txt", "a") as f:
             f.write(f"{cfc}\t")
             for i in range(0, len(buffer)):
                 f.write(f"{buffer[i]}\t")
@@ -430,4 +430,4 @@ def visualize_clf():
 
 if __name__ == "__main__":
     for cmp_size in range(0, 4):
-        cfc_1(input_type=INPUT_TYPES.Relcom, cmp_size=cmp_size)
+        cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=cmp_size)
