@@ -71,7 +71,7 @@ def get_florence_buffer(start, end, configs):
     i = 0
     for (folder_name, full_name) in enum_florence_3d():
         idGesture, idActor, idAction, idCategory = parse_florence_3d_name(folder_name)
-        if idCategory != 2:
+        if idCategory != 8:  # ACTION for stuff 2 = drink, 8 = watch, 6 = quick sit
             continue
         i += 1
         if i < start or i >= end:
@@ -191,7 +191,7 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], save_name, configs: Confi
                 model.save()
     if configs.test != []:
         reports = []
-        target_names = ["no action", "fall", "drink"]
+        target_names = ["no action", "fall", "watch"]
         for i in range(0, len(models)):
             model = models[i]
             model.delete()
@@ -339,58 +339,92 @@ def percentage_1():
 
 def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
     cv2.startWindowThread()
-    # train_buffer = get_urfall_buffer(11, 20, Configs(input_type=input_type)) + get_florence_buffer(
-    #     16, 20000000000, Configs(input_type=input_type)
-    # )
-    # test_buffer = get_urfall_buffer(1, 10, Configs(input_type=input_type)) + get_florence_buffer(
-    #     1, 16, Configs(input_type=input_type)
-    # )
-    kfold_buffer = get_urfall_buffer(1, 30, Configs(input_type=input_type)) + get_florence_buffer(
-        1, 20000000000, Configs(input_type=input_type)
+    train_buffer = get_urfall_buffer(11, 20, Configs(input_type=input_type)) + get_florence_buffer(
+        16, 20000000000, Configs(input_type=input_type)
     )
+    test_buffer = get_urfall_buffer(1, 10, Configs(input_type=input_type)) + get_florence_buffer(
+        1, 16, Configs(input_type=input_type)
+    )
+    # kfold_buffer = get_urfall_buffer(1, 30, Configs(input_type=input_type)) + get_florence_buffer(
+    #     1, 20000000000, Configs(input_type=input_type)
+    # )
 
-    kfold = KFold(n_splits=5, shuffle=True)
+    # kfold = KFold(n_splits=5, shuffle=True)
     for cfc in range(2, 100):
         m = 0
         buffer = [0, 0, 0, 0, 0, 0]
-        for i, (train_index, test_index) in enumerate(kfold.split(kfold_buffer)):
-            mediapipe_dnn_stream(
-                [kfold_buffer[x] for x in train_index],
-                f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
-                Configs(
-                    render=False,
-                    input_type=input_type,
-                    consecutive_frame_count=cfc,
-                    compress_frames=cmp_size,
-                    train=[x for x in MODEL_TYPES],
-                    test=[],
-                    train_percentage=1.0,
-                ),
-            )
-            reports = mediapipe_dnn_stream(
-                [kfold_buffer[x] for x in test_index],
-                f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
-                Configs(
-                    render=False,
-                    input_type=input_type,
-                    consecutive_frame_count=cfc,
-                    compress_frames=cmp_size,
-                    train=[],
-                    test=[x for x in MODEL_TYPES],
-                    train_percentage=1.0,
-                ),
-            )
-            for i in range(0, len(reports)):
-                buffer[i * 2] = buffer[i * 2] + reports[i]["fall"]["recall"]
-                buffer[i * 2 + 1] = buffer[i * 2 + 1] + reports[i]["drink"]["recall"]
-            m += 1
-        for i in range(0, len(buffer)):
-            buffer[i] /= m
-        with open(f"mult3_kfold_{str(input_type)}_cmp{cmp_size:02d}.txt", "a") as f:
+        # for i, (train_index, test_index) in enumerate(kfold.split(kfold_buffer)):
+        #     mediapipe_dnn_stream(
+        #         [kfold_buffer[x] for x in train_index],
+        #         f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
+        #         Configs(
+        #             render=False,
+        #             input_type=input_type,
+        #             consecutive_frame_count=cfc,
+        #             compress_frames=cmp_size,
+        #             train=[x for x in MODEL_TYPES],
+        #             test=[],
+        #             train_percentage=1.0,
+        #         ),
+        #     )
+        #     reports = mediapipe_dnn_stream(
+        #         [kfold_buffer[x] for x in test_index],
+        #         f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
+        #         Configs(
+        #             render=False,
+        #             input_type=input_type,
+        #             consecutive_frame_count=cfc,
+        #             compress_frames=cmp_size,
+        #             train=[],
+        #             test=[x for x in MODEL_TYPES],
+        #             train_percentage=1.0,
+        #         ),
+        #     )
+        #     for i in range(0, len(reports)):
+        #         buffer[i * 2] = buffer[i * 2] + reports[i]["fall"]["recall"]
+        #         buffer[i * 2 + 1] = buffer[i * 2 + 1] + reports[i]["watch"]["recall"]
+        #     m += 1
+        # for i in range(0, len(buffer)):
+        #     buffer[i] /= m
+
+        mediapipe_dnn_stream(
+            train_buffer,
+            f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
+            Configs(
+                render=False,
+                input_type=input_type,
+                consecutive_frame_count=cfc,
+                compress_frames=cmp_size,
+                train=[x for x in MODEL_TYPES],
+                test=[],
+                train_percentage=1.0,
+            ),
+        )
+        reports = mediapipe_dnn_stream(
+            test_buffer,
+            f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
+            Configs(
+                render=False,
+                input_type=input_type,
+                consecutive_frame_count=cfc,
+                compress_frames=cmp_size,
+                train=[],
+                test=[x for x in MODEL_TYPES],
+                train_percentage=1.0,
+            ),
+        )
+        for i in range(0, len(reports)):
+            buffer[i * 2] = buffer[i * 2] + reports[i]["fall"]["recall"]
+            buffer[i * 2 + 1] = buffer[i * 2 + 1] + reports[i]["watch"]["recall"]
+
+        with open(f"mult3_complex_{str(input_type)}_cmp{cmp_size:02d}.txt", "a") as f:
             f.write(f"{cfc}\t")
             for i in range(0, len(buffer)):
                 f.write(f"{buffer[i]}\t")
             f.write("\n")
+
+        if sum(buffer) <= 0.001:
+            break
 
     cv2.destroyAllWindows()
 
@@ -433,5 +467,7 @@ def visualize_clf():
 
 
 if __name__ == "__main__":
-    for cmp_size in range(0, 4):
-        cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=cmp_size)
+    # for cmp_size in range(2, 4):
+    #     cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=cmp_size)
+    for cmp_size in range(1, 4):
+        cfc_1(input_type=INPUT_TYPES.Relcom, cmp_size=cmp_size)
