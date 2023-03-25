@@ -102,7 +102,6 @@ def get_florence_buffer(start, end, configs):
 
 # left-inclusive, right-exclusive
 def mediapipe_dnn_stream(buffers: list[DatasetBuffer], save_name, configs: Configs):
-    pose = Mediapipe_Pose()
     models = [
         DNNModel(
             configs,
