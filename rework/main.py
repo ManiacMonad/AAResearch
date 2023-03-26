@@ -349,7 +349,7 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
     # )
 
     # kfold = KFold(n_splits=5, shuffle=True)
-    for cfc in range(2, 100):
+    for cfc in range(5, 100):
         m = 0
         buffer = [0, 0, 0, 0, 0, 0]
         # for i, (train_index, test_index) in enumerate(kfold.split(kfold_buffer)):
@@ -468,5 +468,5 @@ def visualize_clf():
 if __name__ == "__main__":
     # for cmp_size in range(2, 4):
     #     cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=cmp_size)
-    for cmp_size in range(1, 4):
+    for cmp_size in range(3, 4):
         cfc_1(input_type=INPUT_TYPES.Relcom, cmp_size=cmp_size)
