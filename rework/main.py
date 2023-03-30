@@ -393,18 +393,20 @@ def percentage_1():
 
 def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
     cv2.startWindowThread()
-    train_buffer = get_urfall_buffer(
-        11, 20, [buffer_type.default], Configs(input_type=input_type)
-    ) + get_florence_buffer(16, 20000000000, [buffer_type.default], Configs(input_type=input_type))
-    test_buffer = get_urfall_buffer(1, 10, [buffer_type.default], Configs(input_type=input_type)) + get_florence_buffer(
-        1, 16, [buffer_type.default], Configs(input_type=input_type)
+    train_types = [buffer_type.default]
+    test_types = [buffer_type.default]
+    train_buffer = get_urfall_buffer(11, 20, train_types, Configs(input_type=input_type)) + get_florence_buffer(
+        16, 20000000000, train_types, Configs(input_type=input_type)
+    )
+    test_buffer = get_urfall_buffer(1, 10, test_types, Configs(input_type=input_type)) + get_florence_buffer(
+        1, 16, test_types, Configs(input_type=input_type)
     )
     # kfold_buffer = get_urfall_buffer(1, 30, Configs(input_type=input_type)) + get_florence_buffer(
     #     1, 20000000000, Configs(input_type=input_type)
     # )
 
     # kfold = KFold(n_splits=5, shuffle=True)
-    for cfc in range(5, 100):
+    for cfc in range(2, 100):
         m = 0
         buffer = [0, 0, 0, 0, 0, 0]
         # for i, (train_index, test_index) in enumerate(kfold.split(kfold_buffer)):
