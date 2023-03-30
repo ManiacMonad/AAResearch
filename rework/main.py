@@ -23,6 +23,7 @@ import cv2
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+from enum import Enum
 
 
 class DatasetBuffer:
@@ -34,66 +35,120 @@ class DatasetBuffer:
         self.full_name = "undefined"
 
 
-def get_urfall_buffer(start, end, configs):
+class buffer_type(Enum):
+    default = 0
+    flip = 1
+    rot90 = 2
+
+
+def get_urfall_buffer(start, end, accepted_type, configs):
     pose = Mediapipe_Pose()
     buffers = []
+    if accepted_type == []:
+        accepted_type = [x for x in buffer_type]
     for (folder_name, full_name) in enum_ur_fall(start, end):
         stream = VideoStream(FolderHandler(full_name, configs, suffix=".png"), configs)
         numbers = []
         with open(f"markers/{folder_name}.txt", "r") as f:
             numbers = [int(num) for line in f for num in line.strip().split()]
-        buffer = DatasetBuffer()
-        buffer.dataset = DATASETS.ur_fall
-        buffer.numbers = numbers
 
-        buffer.folder_name = folder_name
-        buffer.full_name = full_name
+        def create_buffer():
+            nonlocal numbers, folder_name, full_name
+            buffer = DatasetBuffer()
+            buffer.dataset = DATASETS.ur_fall
+            buffer.numbers = numbers
+            buffer.folder_name = folder_name
+            buffer.full_name = full_name
+            return buffer
+
+        def append_buffer(buffer, img):
+            nonlocal configs, pose
+            result = pose.process(img)
+            if result.pose_landmarks is None:
+                return
+            landmarks = get_landmark(result.pose_landmarks.landmark, configs)
+            buffer.raw_landmarks.append(landmarks)
+
+        default_buffer = create_buffer()
+        flip_buffer = create_buffer()
+        rot90_buffer = create_buffer()
         while True:
             img = stream.get_image()
             if img is None:
                 break
-            results = pose.process(img)
-            if results.pose_landmarks is None:
-                continue
-            landmarks = get_landmark(results.pose_landmarks.landmark, configs)
-            buffer.raw_landmarks.append(landmarks)
+            if buffer_type.default in accepted_type:
+                append_buffer(default_buffer, img)
+            if buffer_type.flip in accepted_type:
+                append_buffer(flip_buffer, cv2.flip(img, 1))
+            if buffer_type.rot90 in accepted_type:
+                append_buffer(rot90_buffer, cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE))
 
-        buffers.append(buffer)
+        if buffer_type.default in accepted_type:
+            buffers.append(default_buffer)
+        if buffer_type.flip in accepted_type:
+            buffers.append(flip_buffer)
+        if buffer_type.rot90 in accepted_type:
+            buffers.append(rot90_buffer)
 
         stream.dispose()
 
     return buffers
 
 
-def get_florence_buffer(start, end, configs):
+def get_florence_buffer(start, end, accepted_type, configs):
+    if accepted_type == []:
+        accepted_type = [x for x in buffer_type]
+
     pose = Mediapipe_Pose()
     buffers = []
     i = 0
     for (folder_name, full_name) in enum_florence_3d():
         idGesture, idActor, idAction, idCategory = parse_florence_3d_name(folder_name)
-        if idCategory != 8:  # ACTION for stuff 2 = drink, 8 = watch, 6 = quick sit
+        if idCategory != 2:  # ACTION for stuff 2 = drink, 8 = watch, 6 = quick sit
             continue
         i += 1
         if i < start or i >= end:
             continue
         stream = VideoStream(VideoHandler(full_name, configs), configs)
-        buffer = DatasetBuffer()
-        buffer.dataset = DATASETS.ur_fall
-        buffer.numbers = []
-        buffer.folder_name = folder_name
-        buffer.full_name = full_name
+
+        def create_buffer():
+            nonlocal folder_name, full_name
+            buffer = DatasetBuffer()
+            buffer.dataset = DATASETS.ur_fall
+            buffer.numbers = []
+            buffer.folder_name = folder_name
+            buffer.full_name = full_name
+            return buffer
+
+        def append_buffer(buffer, img):
+            nonlocal configs, pose
+            result = pose.process(img)
+            if result.pose_landmarks is None:
+                return
+            landmarks = get_landmark(result.pose_landmarks.landmark, configs)
+            buffer.raw_landmarks.append(landmarks)
+            buffer.numbers.append(2)
+
+        default_buffer = create_buffer()
+        flip_buffer = create_buffer()
+        rot90_buffer = create_buffer()
         while True:
             img = stream.get_image()
             if img is None:
                 break
-            results = pose.process(img)
-            buffer.numbers.append(2)
-            if results.pose_landmarks is None:
-                continue
-            landmarks = get_landmark(results.pose_landmarks.landmark, configs)
-            buffer.raw_landmarks.append(landmarks)
+            if buffer_type.default in accepted_type:
+                append_buffer(default_buffer, img)
+            if buffer_type.flip in accepted_type:
+                append_buffer(flip_buffer, cv2.flip(img, 1))
+            if buffer_type.rot90 in accepted_type:
+                append_buffer(rot90_buffer, cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE))
 
-        buffers.append(buffer)
+        if buffer_type.default in accepted_type:
+            buffers.append(default_buffer)
+        if buffer_type.flip in accepted_type:
+            buffers.append(flip_buffer)
+        if buffer_type.rot90 in accepted_type:
+            buffers.append(rot90_buffer)
 
         stream.dispose()
 
@@ -190,7 +245,7 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], save_name, configs: Confi
                 model.save()
     if configs.test != []:
         reports = []
-        target_names = ["no action", "fall", "watch"]
+        target_names = ["no action", "fall", "drink"]
         for i in range(0, len(models)):
             model = models[i]
             model.delete()
@@ -338,11 +393,11 @@ def percentage_1():
 
 def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
     cv2.startWindowThread()
-    train_buffer = get_urfall_buffer(11, 20, Configs(input_type=input_type)) + get_florence_buffer(
-        16, 20000000000, Configs(input_type=input_type)
+    train_buffer = get_urfall_buffer(11, 20, [], Configs(input_type=input_type)) + get_florence_buffer(
+        16, 20000000000, [], Configs(input_type=input_type)
     )
-    test_buffer = get_urfall_buffer(1, 10, Configs(input_type=input_type)) + get_florence_buffer(
-        1, 16, Configs(input_type=input_type)
+    test_buffer = get_urfall_buffer(1, 10, [buffer_type.default], Configs(input_type=input_type)) + get_florence_buffer(
+        1, 16, [buffer_type.default], Configs(input_type=input_type)
     )
     # kfold_buffer = get_urfall_buffer(1, 30, Configs(input_type=input_type)) + get_florence_buffer(
     #     1, 20000000000, Configs(input_type=input_type)
@@ -388,7 +443,7 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
 
         mediapipe_dnn_stream(
             train_buffer,
-            f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
+            f"aug_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
             Configs(
                 render=False,
                 input_type=input_type,
@@ -401,7 +456,7 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
         )
         reports = mediapipe_dnn_stream(
             test_buffer,
-            f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
+            f"aug_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
             Configs(
                 render=False,
                 input_type=input_type,
@@ -414,9 +469,9 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
         )
         for i in range(0, len(reports)):
             buffer[i * 2] = buffer[i * 2] + reports[i]["fall"]["recall"]
-            buffer[i * 2 + 1] = buffer[i * 2 + 1] + reports[i]["watch"]["recall"]
+            buffer[i * 2 + 1] = buffer[i * 2 + 1] + reports[i]["drink"]["recall"]
 
-        with open(f"mult3_complex_{str(input_type)}_cmp{cmp_size:02d}.txt", "a") as f:
+        with open(f"mult3_aug_{str(input_type)}_cmp{cmp_size:02d}.txt", "a") as f:
             f.write(f"{cfc}\t")
             for i in range(0, len(buffer)):
                 f.write(f"{buffer[i]}\t")
@@ -466,7 +521,5 @@ def visualize_clf():
 
 
 if __name__ == "__main__":
-    # for cmp_size in range(2, 4):
-    #     cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=cmp_size)
-    for cmp_size in range(3, 4):
-        cfc_1(input_type=INPUT_TYPES.Relcom, cmp_size=cmp_size)
+    cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=0)
+    cfc_1(input_type=INPUT_TYPES.Relcom, cmp_size=0)
