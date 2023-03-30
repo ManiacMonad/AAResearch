@@ -1,0 +1,18 @@
+{
+  "Outputs" : {
+    "classLabel_probs" : {
+      "MLFeatureShortDescription" : "--"
+    },
+    "classLabel" : {
+      "MLFeatureShortDescription" : "--"
+    }
+  },
+  "Inputs" : {
+    "dense_input" : {
+      "MLFeatureShortDescription" : "--"
+    }
+  },
+  "TrainingInputs" : {
+
+  }
+}
