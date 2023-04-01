@@ -255,8 +255,8 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], save_name, configs: Confi
                 )
                 batch_result = [np.argmax(sample) for sample in batch_result]
                 cf = confusion_matrix(y_dummy_truth, batch_result)
-                ConfusionMatrixDisplay(cf, display_labels=["no action", "fall"]).plot()
-                plt.show()
+                # ConfusionMatrixDisplay(cf, display_labels=["no action", "fall"]).plot()
+                # plt.show()
                 report = classification_report(
                     y_dummy_truth,
                     batch_result,
