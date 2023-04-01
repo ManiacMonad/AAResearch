@@ -17,7 +17,7 @@ from utils import (
 )
 from stream import VideoHandler, VideoStream, FolderHandler
 from models import DNNModel, DecisionTree, ManualDecisionTree, XGBoostModel, yolo_detect, yolo_wrap_detection, yolo_draw
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import confusion_matrix, classification_report, ConfusionMatrixDisplay
 from sklearn.model_selection import KFold
 import cv2
 import numpy as np
@@ -255,6 +255,8 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], save_name, configs: Confi
                 )
                 batch_result = [np.argmax(sample) for sample in batch_result]
                 cf = confusion_matrix(y_dummy_truth, batch_result)
+                ConfusionMatrixDisplay(cf, display_labels=["no action", "fall"]).plot()
+                plt.show()
                 report = classification_report(
                     y_dummy_truth,
                     batch_result,
@@ -393,14 +395,10 @@ def percentage_1():
 
 def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
     cv2.startWindowThread()
-    train_types = [buffer_type.default, buffer_type.flip, buffer_type.rot90]
-    test_types = [buffer_type.default, buffer_type.flip, buffer_type.rot90]
-    train_buffer = get_urfall_buffer(11, 20, train_types, Configs(input_type=input_type)) + get_florence_buffer(
-        16, 20000000000, train_types, Configs(input_type=input_type)
-    )
-    test_buffer = get_urfall_buffer(1, 10, test_types, Configs(input_type=input_type)) + get_florence_buffer(
-        1, 16, test_types, Configs(input_type=input_type)
-    )
+    train_types = [buffer_type.default]
+    test_types = [buffer_type.default]
+    train_buffer = get_urfall_buffer(11, 20, train_types, Configs(input_type=input_type))
+    test_buffer = get_urfall_buffer(1, 10, test_types, Configs(input_type=input_type))
     # kfold_buffer = get_urfall_buffer(1, 30, Configs(input_type=input_type)) + get_florence_buffer(
     #     1, 20000000000, Configs(input_type=input_type)
     # )
@@ -473,7 +471,7 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
             buffer[i * 2] = buffer[i * 2] + reports[i]["fall"]["recall"]
             buffer[i * 2 + 1] = buffer[i * 2 + 1] + reports[i]["drink"]["recall"]
 
-        with open(f"mult3_aug_augtest_{str(input_type)}_cmp{cmp_size:02d}.txt", "a") as f:
+        with open(f"tmp_{str(input_type)}_cmp{cmp_size:02d}.txt", "a") as f:
             f.write(f"{cfc}\t")
             for i in range(0, len(buffer)):
                 f.write(f"{buffer[i]}\t")
@@ -523,5 +521,5 @@ def visualize_clf():
 
 
 if __name__ == "__main__":
-    cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=0)
+    # cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=0)
     cfc_1(input_type=INPUT_TYPES.Relcom, cmp_size=0)
