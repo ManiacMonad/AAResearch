@@ -244,15 +244,20 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], save_name, configs: Confi
                 model.train(x_manual_input if configs.input_type == INPUT_TYPES.Proc else x_array_input, y_array_truth)
                 model.save()
     if configs.test != []:
+        time_deltas = []
         reports = []
         target_names = ["no action", "fall", "drink"]
         for i in range(0, len(models)):
             model = models[i]
             model.delete()
             if model.type in configs.test:
+                start = np.datetime64("now")
                 batch_result = model.predict(
                     x_manual_input if configs.input_type == INPUT_TYPES.Proc else x_array_input
                 )
+                end = np.datetime64("now")
+                delta_micro = (end - start) / np.timedelta64(1, "us")
+                time_deltas.append(delta_micro / len(x_array_input))
                 batch_result = [np.argmax(sample) for sample in batch_result]
                 cf = confusion_matrix(y_dummy_truth, batch_result)
                 # ConfusionMatrixDisplay(cf, display_labels=["no action", "fall"]).plot()
@@ -265,6 +270,10 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], save_name, configs: Confi
                     output_dict=True,
                 )
                 reports.append(report)
+
+        with open("time_efficiency.txt", "a") as f:
+            f.write(f"Time: {str(time_deltas)}\n")
+            f.write("\n")
 
         return reports
 
