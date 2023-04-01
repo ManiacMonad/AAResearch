@@ -19,6 +19,7 @@ from stream import VideoHandler, VideoStream, FolderHandler
 from models import DNNModel, DecisionTree, ManualDecisionTree, XGBoostModel, yolo_detect, yolo_wrap_detection, yolo_draw
 from sklearn.metrics import confusion_matrix, classification_report, ConfusionMatrixDisplay
 from sklearn.model_selection import KFold
+import time
 import cv2
 import numpy as np
 import math
@@ -238,11 +239,21 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], save_name, configs: Confi
             x_array_input.append(flatten)
 
     if configs.train != []:
+        time_deltas = []
         for i in range(0, len(models)):
             model = models[i]
             if model.type in configs.train:
+                start = time.perf_counter_ns()
                 model.train(x_manual_input if configs.input_type == INPUT_TYPES.Proc else x_array_input, y_array_truth)
+                end = time.perf_counter_ns()
+                delta_count = end - start
+                time_deltas.append(delta_count / len(x_array_input))
                 model.save()
+
+        with open("train_time_efficiency.txt", "a") as f:
+            for t in time_deltas:
+                f.write(f"{t}, ")
+            f.write("\n")
     if configs.test != []:
         time_deltas = []
         reports = []
@@ -251,13 +262,13 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], save_name, configs: Confi
             model = models[i]
             model.delete()
             if model.type in configs.test:
-                start = np.datetime64("now")
+                start = time.perf_counter_ns()
                 batch_result = model.predict(
                     x_manual_input if configs.input_type == INPUT_TYPES.Proc else x_array_input
                 )
-                end = np.datetime64("now")
-                delta_micro = (end - start) / np.timedelta64(1, "us")
-                time_deltas.append(delta_micro / len(x_array_input))
+                end = time.perf_counter_ns()
+                delta_count = end - start
+                time_deltas.append(delta_count / len(x_array_input))
                 batch_result = [np.argmax(sample) for sample in batch_result]
                 cf = confusion_matrix(y_dummy_truth, batch_result)
                 # ConfusionMatrixDisplay(cf, display_labels=["no action", "fall"]).plot()
@@ -271,8 +282,9 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], save_name, configs: Confi
                 )
                 reports.append(report)
 
-        with open("time_efficiency.txt", "a") as f:
-            f.write(f"Time: {str(time_deltas)}\n")
+        with open("test_time_efficiency.txt", "a") as f:
+            for t in time_deltas:
+                f.write(f"{t}, ")
             f.write("\n")
 
         return reports
