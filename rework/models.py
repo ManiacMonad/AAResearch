@@ -4,6 +4,7 @@ import math
 import pickle
 from xgboost import XGBClassifier
 from utils import MODEL_TYPES, get_center_of_mass, INPUT_TYPES
+import tensorflow
 from tensorflow import keras
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
@@ -12,6 +13,14 @@ from sklearn import tree
 import mediapipe as mp
 import matplotlib.pyplot as plt
 import os
+
+# initialize rtx gpu
+physical_devices = tensorflow.config.list_physical_devices("GPU")
+try:
+    tensorflow.config.experimental.set_memory_growth(physical_devices[0], True)
+except:
+    # Invalid device or cannot modify virtual devices once initialized.
+    pass
 
 mp_pose = mp.solutions.pose
 
