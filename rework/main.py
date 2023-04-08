@@ -47,7 +47,7 @@ def get_urfall_buffer(start, end, accepted_type, configs):
     buffers = []
     if accepted_type == []:
         accepted_type = [x for x in buffer_type]
-    for (folder_name, full_name) in enum_ur_fall(start, end):
+    for folder_name, full_name in enum_ur_fall(start, end):
         stream = VideoStream(FolderHandler(full_name, configs, suffix=".png"), configs)
         numbers = []
         with open(f"markers/{folder_name}.txt", "r") as f:
@@ -103,7 +103,7 @@ def get_florence_buffer(start, end, accepted_type, configs):
     pose = Mediapipe_Pose()
     buffers = []
     i = 0
-    for (folder_name, full_name) in enum_florence_3d():
+    for folder_name, full_name in enum_florence_3d():
         idGesture, idActor, idAction, idCategory = parse_florence_3d_name(folder_name)
         if idCategory != 2:  # ACTION for stuff 2 = drink, 8 = watch, 6 = quick sit
             continue
@@ -292,7 +292,6 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], save_name, configs: Confi
 
 
 def multiple_stream(configs):
-
     pose = Mediapipe_Pose()
 
     net = cv2.dnn.readNet("yolov5s.onnx")
@@ -316,7 +315,7 @@ def multiple_stream(configs):
 
         people_count = 0
 
-        for (classid, confidence, box) in zip(class_ids, confidences, boxes):
+        for classid, confidence, box in zip(class_ids, confidences, boxes):
             if classid == 0:
                 left, top, width, height = box
                 results = pose.process(
@@ -547,4 +546,6 @@ def visualize_clf():
 
 
 if __name__ == "__main__":
-    cfc_1(input_type=INPUT_TYPES.Relcom, cmp_size=0)
+    for cmp in range(1, 3):
+        cfc_1(input_type=INPUT_TYPES.Relcom, cmp_size=cmp)
+        cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=cmp)
