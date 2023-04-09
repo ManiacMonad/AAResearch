@@ -272,8 +272,8 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], save_name, configs: Confi
                 time_deltas.append(delta_count / len(x_array_input) / 1000000)  # ns to ms
                 batch_result = [np.argmax(sample) for sample in batch_result]
                 cf = confusion_matrix(y_dummy_truth, batch_result)
-                # ConfusionMatrixDisplay(cf, display_labels=target_names).plot()
-                # plt.show()
+                ConfusionMatrixDisplay(cf, display_labels=target_names).plot()
+                plt.show()
                 report = classification_report(
                     y_dummy_truth,
                     batch_result,
@@ -416,7 +416,7 @@ def percentage_1():
 
 def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
     cv2.startWindowThread()
-    train_types = [buffer_type.default, buffer_type.flip, buffer_type.rot90]
+    train_types = [buffer_type.default]
     test_types = [buffer_type.default]
     train_buffer = get_urfall_buffer(11, 20, train_types, Configs(input_type=input_type)) + get_florence_buffer(
         16, 20000000000, train_types, Configs(input_type=input_type)
@@ -468,7 +468,7 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
 
         mediapipe_dnn_stream(
             train_buffer,
-            f"aug_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
+            f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
             Configs(
                 render=False,
                 input_type=input_type,
@@ -481,7 +481,7 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
         )
         reports = mediapipe_dnn_stream(
             test_buffer,
-            f"aug_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
+            f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
             Configs(
                 render=False,
                 input_type=input_type,
@@ -496,7 +496,7 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
             buffer[i * 2] = buffer[i * 2] + reports[i]["fall"]["recall"]
             buffer[i * 2 + 1] = buffer[i * 2 + 1] + reports[i]["drink"]["recall"]
 
-        with open(f"mult3_aug_{str(input_type)}_cmp{cmp_size:02d}.txt", "a") as f:
+        with open(f"mult3_cfc{str(input_type)}_cmp{cmp_size:02d}.txt", "a") as f:
             f.write(f"{cfc}\t")
             for i in range(0, len(buffer)):
                 f.write(f"{buffer[i]}\t")
@@ -546,6 +546,6 @@ def visualize_clf():
 
 
 if __name__ == "__main__":
-    for cmp in range(1, 3):
+    for cmp in range(1, 4):
         cfc_1(input_type=INPUT_TYPES.Relcom, cmp_size=cmp)
         cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=cmp)
