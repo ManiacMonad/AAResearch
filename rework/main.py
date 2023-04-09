@@ -496,7 +496,7 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
             buffer[i * 2] = buffer[i * 2] + reports[i]["fall"]["recall"]
             buffer[i * 2 + 1] = buffer[i * 2 + 1] + reports[i]["drink"]["recall"]
 
-        with open(f"mult3_{str(input_type)}_cfc{str(cfc)}_cmp{cmp_size:02d}.txt", "a") as f:
+        with open(f"mult3_{str(input_type)}_cmp{cmp_size:02d}.txt", "a") as f:
             for i in range(0, len(buffer)):
                 f.write(f"{buffer[i]}\t")
             f.write("\n")
