@@ -1,7 +1,7 @@
 import coremltools
 
 coreml_model = coremltools.convert(
-    "exclusive/INPUT_TYPES.Relcom_Mediapipe_DNN_cons_05.h5",
+    "exclusive/INPUT_TYPES.Relcom_Mediapipe_DNN_cons_04.h5",
     convert_to="neuralnetwork",
     inputs=[coremltools.TensorType("dense_input", shape=(340,))],
     # outputs=[coremltools.TensorType()],
@@ -23,4 +23,4 @@ coreml_model = coremltools.convert(
     source="tensorflow",
 )
 
-coreml_model.save("dnn_relcom_cfc_05.mlmodel")
+coreml_model.save("dnn_relcom_cfc_04.mlmodel")
