@@ -258,7 +258,7 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], save_name, configs: Confi
     if configs.test != []:
         time_deltas = []
         reports = []
-        target_names = ["no action", "fall", "drink"]
+        target_names = ["no action", "fall"]
         for i in range(0, len(models)):
             model = models[i]
             model.delete()
@@ -418,20 +418,22 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
     cv2.startWindowThread()
     train_types = [buffer_type.default]
     test_types = [buffer_type.default]
-    train_buffer = get_urfall_buffer(11, 20, train_types, Configs(input_type=input_type)) + get_florence_buffer(
-        16, 20000000000, train_types, Configs(input_type=input_type)
-    )
-    test_buffer = get_urfall_buffer(1, 10, test_types, Configs(input_type=input_type)) + get_florence_buffer(
-        1, 16, test_types, Configs(input_type=input_type)
-    )
+    train_buffer = get_urfall_buffer(5, 20, train_types, Configs(input_type=input_type))
+    # + get_florence_buffer(
+    #     16, 20000000000, train_types, Configs(input_type=input_type)
+    # )
+    test_buffer = get_urfall_buffer(1, 10, test_types, Configs(input_type=input_type))
+    # + get_florence_buffer(
+    #     1, 16, test_types, Configs(input_type=input_type)
+    # )
     # kfold_buffer = get_urfall_buffer(1, 30, Configs(input_type=input_type)) + get_florence_buffer(
     #     1, 20000000000, Configs(input_type=input_type)
     # )
 
     # kfold = KFold(n_splits=5, shuffle=True)
-    for cfc in range(2, 100):
+    for percent in range(10, 100, 10):
         m = 0
-        buffer = [0, 0, 0, 0, 0, 0]
+        buffer = [0, 0, 0]
         # for i, (train_index, test_index) in enumerate(kfold.split(kfold_buffer)):
         #     mediapipe_dnn_stream(
         #         [kfold_buffer[x] for x in train_index],
@@ -465,14 +467,15 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
         #     m += 1
         # for i in range(0, len(buffer)):
         #     buffer[i] /= m
+        print(len(train_buffer), percent / 100)
 
         mediapipe_dnn_stream(
-            train_buffer,
-            f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
+            train_buffer[0 : math.floor(len(train_buffer) * percent / 100)],
+            f"fall_{str(input_type)}.txt",
             Configs(
                 render=False,
                 input_type=input_type,
-                consecutive_frame_count=cfc,
+                consecutive_frame_count=2,
                 compress_frames=cmp_size,
                 train=[x for x in MODEL_TYPES],
                 test=[],
@@ -481,11 +484,11 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
         )
         reports = mediapipe_dnn_stream(
             test_buffer,
-            f"mult3_cfc{cfc:02d}_{str(input_type)}_cmp{cmp_size:02d}.txt",
+            f"fall_{str(input_type)}.txt",
             Configs(
                 render=False,
                 input_type=input_type,
-                consecutive_frame_count=cfc,
+                consecutive_frame_count=2,
                 compress_frames=cmp_size,
                 train=[],
                 test=[x for x in MODEL_TYPES],
@@ -493,10 +496,9 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
             ),
         )
         for i in range(0, len(reports)):
-            buffer[i * 2] = buffer[i * 2] + reports[i]["fall"]["recall"]
-            buffer[i * 2 + 1] = buffer[i * 2 + 1] + reports[i]["drink"]["recall"]
+            buffer[i] = buffer[i] + reports[i]["fall"]["recall"]
 
-        with open(f"mult3_{str(input_type)}_cmp{cmp_size:02d}.txt", "a") as f:
+        with open(f"fall_{str(input_type)}.txt", "a") as f:
             for i in range(0, len(buffer)):
                 f.write(f"{buffer[i]}\t")
             f.write("\n")
@@ -545,6 +547,5 @@ def visualize_clf():
 
 
 if __name__ == "__main__":
-    for cmp in range(1, 4):
-        cfc_1(input_type=INPUT_TYPES.Relcom, cmp_size=cmp)
-        cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=cmp)
+    # cfc_1(input_type=INPUT_TYPES.Relcom, cmp_size=0)
+    cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=0)
