@@ -57,7 +57,7 @@ def get_urfall_buffer(start, end, accepted_type, configs):
             nonlocal numbers, folder_name, full_name
             buffer = DatasetBuffer()
             buffer.dataset = DATASETS.ur_fall
-            buffer.numbers = [0] * len(numbers)
+            buffer.numbers = numbers
             buffer.folder_name = folder_name
             buffer.full_name = full_name
             return buffer
@@ -106,7 +106,7 @@ def get_florence_buffer(start, end, accepted_type, configs):
     for folder_name, full_name in enum_florence_3d():
         idGesture, idActor, idAction, idCategory = parse_florence_3d_name(folder_name)
         # wave, drink from a bottle, answer phone,clap, tight lace, sit down, stand up, read watch, bow
-        if not (idCategory in [1, 2, 8]):  # ACTION for stuff 2 = drink, 8 = watch, 6 = quick sit
+        if not (idCategory in [2]):  # ACTION for stuff 2 = drink, 8 = watch, 6 = quick sit
             continue
         i += 1
         if i < start or i >= end:
@@ -129,7 +129,7 @@ def get_florence_buffer(start, end, accepted_type, configs):
                 return
             landmarks = get_landmark(result.pose_landmarks.landmark, configs)
             buffer.raw_landmarks.append(landmarks)
-            buffer.numbers.append(({1: 1, 2: 2, 8: 3})[idCategory])
+            buffer.numbers.append(2)
 
         default_buffer = create_buffer()
         flip_buffer = create_buffer()
@@ -164,15 +164,15 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], configs: Configs):
             configs,
             loadfromfile=not (MODEL_TYPES.Mediapipe_DNN in configs.train),
         ),
-        # DecisionTree(
-        #     configs,
-        #     loadfromfile=not (MODEL_TYPES.Mediapipe_CLF in configs.train),
-        # ),
-        # # ManualDecisionTree(configs, 11.80, test_torso_thres),
-        # XGBoostModel(
-        #     configs,
-        #     loadfromfile=not (MODEL_TYPES.Mediapipe_XGBoost in configs.train),
-        # ),
+        DecisionTree(
+            configs,
+            loadfromfile=not (MODEL_TYPES.Mediapipe_CLF in configs.train),
+        ),
+        # ManualDecisionTree(configs, 11.80, test_torso_thres),
+        XGBoostModel(
+            configs,
+            loadfromfile=not (MODEL_TYPES.Mediapipe_XGBoost in configs.train),
+        ),
     ]
 
     x_array_input = []
@@ -259,10 +259,9 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], configs: Configs):
     if configs.test != []:
         time_deltas = []
         reports = []
-        target_names = ["none", "wave", "drink", "watch"]
+        target_names = ["no action", "fall", "drink"]
         for i in range(0, len(models)):
             model = models[i]
-            # model.delete()
             if model.type in configs.test:
                 start = time.perf_counter_ns()
                 batch_result = model.predict(
@@ -283,6 +282,7 @@ def mediapipe_dnn_stream(buffers: list[DatasetBuffer], configs: Configs):
                     output_dict=True,
                 )
                 reports.append(report)
+            model.delete()
 
         # with open("test_time_efficiency.txt", "a") as f:
         #     for t in time_deltas:
@@ -420,19 +420,19 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
     train_types = [buffer_type.default]
     test_types = [buffer_type.default]
     train_buffer = get_urfall_buffer(
-        1, 3, [buffer_type.default], configs=Configs(input_type=input_type)
-    ) + get_florence_buffer(1, 20000000000, [buffer_type.default, buffer_type.flip], Configs(input_type=input_type))
-    test_buffer = get_urfall_buffer(1, 3, train_types, configs=Configs(input_type=input_type)) + get_florence_buffer(
-        1, 20000000000, [buffer_type.default, buffer_type.flip], Configs(input_type=input_type)
+        1, 20, [buffer_type.default], configs=Configs(input_type=input_type)
+    ) + get_florence_buffer(16, 20000000000, [buffer_type.default], Configs(input_type=input_type))
+    test_buffer = get_urfall_buffer(20, 30, train_types, configs=Configs(input_type=input_type)) + get_florence_buffer(
+        1, 16, [buffer_type.default], Configs(input_type=input_type)
     )
     # kfold_buffer = get_urfall_buffer(1, 30, Configs(input_type=input_type)) + get_florence_buffer(
     #     1, 20000000000, Configs(input_type=input_type)
     # )
 
     # kfold = KFold(n_splits=5, shuffle=True)
-    for cfc in range(3, 100):
+    for cfc in range(80, 100):
         m = 0
-        buffer = [0] * 12
+        buffer = [0] * 2 * 3
         # for i, (train_index, test_index) in enumerate(kfold.split(kfold_buffer)):
         #     mediapipe_dnn_stream(
         #         [kfold_buffer[x] for x in train_index],
@@ -492,12 +492,10 @@ def cfc_1(input_type=INPUT_TYPES.Proc, cmp_size=2):
             ),
         )
         for i in range(0, len(reports)):
-            buffer[i * 4] = buffer[i * 4] + reports[i]["none"]["recall"]
-            buffer[i * 4 + 1] = buffer[i * 4 + 1] + reports[i]["wave"]["recall"]
-            buffer[i * 4 + 2] = buffer[i * 4 + 2] + reports[i]["drink"]["recall"]
-            buffer[i * 4 + 3] = buffer[i * 4 + 3] + reports[i]["watch"]["recall"]
+            buffer[i * 2] = buffer[i * 2] + reports[i]["fall"]["f1-score"]
+            buffer[i * 2 + 1] = buffer[i * 2 + 1] + reports[i]["drink"]["f1-score"]
 
-        with open(f"mult4_{str(input_type)}_cmp{cmp_size:02d}.txt", "a") as f:
+        with open(f"mult3_f1_{str(input_type)}_cmp{cmp_size:02d}.txt", "a") as f:
             for i in range(0, len(buffer)):
                 f.write(f"{buffer[i]}\t")
             f.write("\n")
@@ -546,4 +544,4 @@ def visualize_clf():
 
 
 if __name__ == "__main__":
-    cfc_1(input_type=INPUT_TYPES.Relcom, cmp_size=2)
+    cfc_1(input_type=INPUT_TYPES.Relcom, cmp_size=0)
